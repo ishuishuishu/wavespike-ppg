@@ -1,0 +1,15 @@
+# data and results are not part of the repository (download the datasets yourself; see README)
+wavespike_data/
+results/
+*.npz
+*.npy
+*.mat
+*.mp4
+*.zip
+*.log
+# Python and notebook clutter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+~$*.docx
