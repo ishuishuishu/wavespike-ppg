@@ -12,6 +12,7 @@ A small spiking neural network (SNN) with a learnable wavelet front end for phot
 | `biometrics/` | `bio_run.py` (biometric experiments: datasets, splits, baselines, metrics), `paper_repro.py` (published methods under their own protocols), `prepare_seeing_red.py` and `prepare_zenodo.py` (dataset preparation) |
 | `edge/` | `rpi_infer.py` (NumPy-only inference) and `pi_bench.py` (Raspberry Pi latency, memory and energy benchmark) |
 | `docs/` | Team handoff and the full results page |
+| `archive/` | Other scripts used during development (analysis, testing, manuscript builder); see `archive/README.md` |
 | `manuscript/` | Manuscript drafts (Word) |
 
 ## Quick start
