@@ -96,6 +96,26 @@ EER %, 5 windows, 6 repeats. Only the wavelet changes within a column.
 - A smoke test gave, for our SNN: dense E1 14.3 µJ, event-driven E1 0.73 µJ, Loihi 6.6 µJ per window. These come from a 1-epoch model, so they are not results.
 - The CPU energy counters (RAPL) on the workstation need root to read; not enabled.
 
+#### Energy estimates, done
+- Zenodo across days, fold 0, seed 0, per 10 s window. Saved in `results/energy_estimates.json`.
+- Spike rates were measured on the test windows of a model retrained with the same configuration. That model is not bit-identical to the stored run: it agrees on 79–91% of test decisions, because thread counts differ.
+
+| Model | Params | Dense multiply-adds | fp32 dense (µJ) | fp32 event-driven (µJ) | int8 dense / event (µJ) | + SRAM reads, dense / event (µJ) | Loihi (µJ) |
+|---|---|---|---|---|---|---|---|
+| Our SNN, fully learnable wavelet (`x_tau_amp`) | 6,241 | 3.07 M | 14.3 | 0.75 | 0.71 / 0.033 | 29.1 / 1.80 | 7.3 |
+| Same, with augmentation | 6,241 | 3.07 M | 14.3 | 0.67 | 0.71 / 0.031 | 29.1 / 1.26 | 5.1 |
+| Lean SNN | 5,973 | 1.49 M | 6.9 | 0.47 | 0.35 / 0.022 | 14.1 / 0.96 | 3.5 |
+| Our GRU | 6,288 | 2.73 M | 13.0 | – | 0.65 | 26.1 | – |
+| Our CWT-CNN | 24,659 | 11.7 M (incl. CWT) | 54.0 | – | 2.7 | 54.2 | – |
+| Our beat SVM | 300k stored values (support vectors) | 0.36 M | 1.7 | – | 0.08 | 3.2 | – |
+
+- Measured spike rates: encoder 3.8–5.5%, hidden layer 4–7%.
+- Reading the table:
+  - Dense, the SNN costs about 4× less than the CNN.
+  - Event-driven, the SNN costs about 70× less than the CNN, but only on hardware that skips silent neurons.
+  - Loihi's per-operation costs are higher than the 45 nm figures. The SVM's feature extraction is not counted.
+- CPU latency was measured while the machine was overloaded, so it is not reported.
+
 ### AF detection (stopped)
 - MIMIC PERform: our SNN AUROC 0.611 (last) / 0.668 (best), against the interval baseline 0.919.
 - Zenodo wrist: every method at chance.
