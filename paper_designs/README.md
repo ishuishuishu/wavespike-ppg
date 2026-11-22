@@ -35,7 +35,7 @@ All five also feed two amplitude features (signal level and pulse size) into the
 4. [ ] Run the smoke test; check there's no `Traceback` (§5).
 5. [ ] Run all designs: `bash run_all.sh` (§6).
 6. [ ] Print the results: `bash check_results.sh` (§7).
-7. [ ] Check the saved models: `bash check_models.sh`, with 60 × `runs OK` (§8).
+7. [ ] Check the saved models: `bash check_models.sh`, with 10 × `runs OK` (§8).
 8. [ ] Send back the deliverables (§9).
 
 Run every command **from inside this folder** (`cd paper_designs`). Run one job at a time.
@@ -45,7 +45,7 @@ Run every command **from inside this folder** (`cd paper_designs`). Run one job 
 | File | Use |
 |---|---|
 | `README.md` | This guide |
-| `run_design.sh` | Runs one design on one dataset (6 runs) and saves the trained models |
+| `run_design.sh` | Runs one design on one dataset (6 runs) and saves the fold 0, seed 0 model |
 | `run_all.sh` | Runs all 5 designs on both datasets, one after another (10 jobs, 60 runs) |
 | `check_results.sh` | Prints the summary tables |
 | `check_models.sh` | Reloads every saved model and runs it once |
@@ -179,10 +179,10 @@ BIO_CHANNEL=luma python -I code/bio_run.py --dataset seeing_red --train-stride 0
 - One result file per run, `<variant>_f<fold>_ts<seed>.json`, in:
   - `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/` (Zenodo);
   - `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/` (Seeing Red).
-- One trained model per run, `<results folder name>__<variant>_f<fold>_ts<seed>.pt` (about 30–80 KB), in `$WAVESPIKE_DATA_ROOT/models/paper_designs/`. Each run prints `saved model ...` when its file is written.
+- One trained model per job, from **fold 0, seed 0 only**: `<results folder name>__<variant>_f0_ts0.pt` (about 30–50 KB), in `$WAVESPIKE_DATA_ROOT/models/paper_designs/`. That run prints `saved model ...` when the file is written; the other 5 runs of the job save no model.
 - A log per job in `logs/`.
 
-The run commands above are what `run_design.sh` runs, **plus** `--save-model $WAVESPIKE_DATA_ROOT/models/paper_designs`. If you type a command yourself, add that option so the model is saved.
+The run commands above are what `run_design.sh` runs, **plus** `--save-model $WAVESPIKE_DATA_ROOT/models/paper_designs --save-runs 0:0 --save-last-only`. If you type a command yourself, add those options so the model is saved.
 
 **If interrupted:** run the same command again. Finished runs (those with a result file) are skipped; an interrupted run starts again from epoch 0. If a run has a result file but no model file, tell the project lead; don't delete the result file to force a rerun. Don't delete or edit result files.
 
@@ -198,9 +198,10 @@ bash check_results.sh
 
 ## 8. Saved models (for the Raspberry Pi later)
 
-Every run saves its trained model. Each `.pt` file holds:
-- `last_state`: the weights after the last epoch. **This is the model we report**, and the one for the Pi.
-- `best_state`: the weights at the lowest validation loss, kept for reference.
+Only one model per design per dataset is saved, **10 in total**: the fold 0, seed 0 run, last-epoch weights. That's enough to run each design on the Pi. The other runs are needed only for the results, not for the Pi.
+
+Each `.pt` file holds:
+- `last_state`: the weights after the last epoch. **This is the model we report**, and the one for the Pi. (`best_state` is left empty.)
 - `cfg`: every model setting, including which design it is.
 - `identities`: the person IDs, in class order.
 - `amp_norm`: the mean and standard deviation used to scale the two amplitude features (computed on that fold's training data).
@@ -214,7 +215,7 @@ Check every model rebuilds and runs:
 bash check_models.sh
 ```
 
-- It must list **60** models, each ending in `runs OK`.
+- It must list **10** models, each ending in `runs OK`.
 - The predicted identity it prints is for a synthetic pulse and means nothing; only `runs OK` matters.
 - To check one file: `python -I code/load_model.py $WAVESPIKE_DATA_ROOT/models/paper_designs/<file>.pt`.
 
@@ -226,14 +227,14 @@ bash check_models.sh
 |---|---|---|---|
 | 1 | Zenodo result files `x_{p2_dot,p4_sep,stf_ssa,stf_swsa,stf_fatm}_f{0,1,2}_ts{0,1}.json` | `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/` | 30 |
 | 2 | Seeing Red result files, same names | `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/` | 30 |
-| 3 | Trained models, `*.pt` | `$WAVESPIKE_DATA_ROOT/models/paper_designs/` | 60 |
-| 4 | Output of `bash check_models.sh` (60 × `runs OK`) | your terminal | 1 |
+| 3 | Trained models `*__x_*_f0_ts0.pt` (one per design per dataset) | `$WAVESPIKE_DATA_ROOT/models/paper_designs/` | 10 |
+| 4 | Output of `bash check_models.sh` (10 × `runs OK`) | your terminal | 1 |
 | 5 | Logs | `logs/` | 10 |
 | 6 | Output of `bash check_results.sh` | your terminal | 1 |
 | 7 | Commit hash (or the name of the folder/zip you received), plus Python, PyTorch and NumPy versions | `git log --oneline -1`; `python -c "import sys, torch, numpy; print(sys.version, torch.__version__, numpy.__version__)"` | 1 |
 | 8 | Notes on anything unexpected: tracebacks, wrong person counts, odd numbers, a model without `runs OK` | a short message | – |
 
-**Done means:** 60 result files, 60 model files, 60 × `runs OK`, 10 logs and the summary. Send them to the project lead directly (a zip is fine; the models total a few MB). Don't commit them to the repository or post them publicly.
+**Done means:** 60 result files, 10 model files, 10 × `runs OK`, 10 logs and the summary. Send them to the project lead directly (a zip is fine; the models total under 1 MB). Don't commit them to the repository or post them publicly.
 
 ## 10. Project rules
 

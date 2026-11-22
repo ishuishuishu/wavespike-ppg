@@ -424,6 +424,10 @@ def main():
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--save-model", default=None, metavar="DIR",
                     help="also save each trained SNN/GRU (last and best weights, config, amp normalisation) to DIR as .pt; off by default")
+    ap.add_argument("--save-runs", default=None, metavar="F:S,...",
+                    help="with --save-model: save only these fold:seed runs (e.g. 0:0); default all")
+    ap.add_argument("--save-last-only", action="store_true",
+                    help="with --save-model: keep only the last-epoch weights (the reported model), not the best-epoch ones")
     ap.add_argument("--train-stride", type=float, default=None,
                     help="window stride for TRAINING windows (denser = more overlapping windows); val/test keep --stride")
     ap.add_argument("--split", default="session", choices=["session", "random"],
@@ -504,7 +508,7 @@ def main():
                     ent = {nm: (g["predict"](out[nm], va, Xa=Xa), g["predict"](out[nm], te, Xa=Xa)) for nm in ("best", "last")}
                     extra = {"epochs_run": len(out["hist"]), "best_epoch": out["best_epoch"],
                              "hid_rate_last": out["hist"][-1]["hid_rate"], "params": int(g["n_params"](out["best"]))}
-                    if a.save_model:                     # opt-in: keep the trained weights (for the Pi), off by default
+                    if a.save_model and (not a.save_runs or f"{k}:{ts}" in a.save_runs.split(",")):   # opt-in, off by default
                         import copy
                         os.makedirs(a.save_model, exist_ok=True)
                         mp = f"{a.save_model}/{os.path.basename(res_dir)}__{v}_f{k}_ts{ts}{'_smoke' if a.smoke else ''}.pt"
@@ -514,7 +518,8 @@ def main():
                                     "cfg": copy.deepcopy(vars(c)), "identities": [str(u) for u in U], "amp_norm": amp_norm,
                                     "input": "10 s PPG window at 50 Hz, z-scored per window; amp features appended as trailing columns",
                                     "last_state": {kk: t.detach().cpu() for kk, t in out["last"].state_dict().items()},
-                                    "best_state": {kk: t.detach().cpu() for kk, t in out["best"].state_dict().items()},
+                                    "best_state": None if a.save_last_only else
+                                                  {kk: t.detach().cpu() for kk, t in out["best"].state_dict().items()},
                                     "best_epoch": out["best_epoch"]}, mp + ".tmp")
                         os.replace(mp + ".tmp", mp); print("saved model", mp)
                 rec = {"variant": v, "fold": k, "seed": ts, "dataset": a.dataset, "win": a.win, "stride": a.stride,
