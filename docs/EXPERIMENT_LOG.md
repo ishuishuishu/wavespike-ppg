@@ -208,3 +208,9 @@ Runs: Zenodo across days and Seeing Red across sittings, 3 folds × 2 seeds, bot
 - Enabling the CPU energy counters (RAPL) needs root on the workstation: the owner's decision.
 - Ibrahim network on BIDMC/MIMIC (about 45 h each): run or skip?
 - A CNN shrunk to the SNN's size (`cwt_cnn` with width 4, about 6k parameters): proposed in the plan, not started.
+
+### Lean SNN handoff (`lean_snn/`)
+- A teammate runs the remaining lean SNN runs on their own server: Task A (Seeing Red, `x_lean_tau_amp`, seed 1, 3 runs) and Task B (Zenodo across days, `x_aug_lean_tau_amp`, 6 runs).
+- New opt-in option `bio_run.py --save-model DIR` (off by default; nothing else changes) saves each trained SNN/GRU as a `.pt` file: last and best weights, full config, identities and the amplitude-feature normalisation. Both handoff tasks use it, so the models can go on the Pi later.
+- `lean_snn/load_model.py` rebuilds a saved model and runs it. Tested with a 2-epoch smoke run: saved, reloaded strictly (last and best weights) and ran.
+- The NumPy-only Pi exporter does not yet cover the amplitude-feature term; separate task.

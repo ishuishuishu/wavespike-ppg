@@ -10,5 +10,6 @@ mkdir -p "$REPO/lean_snn/logs"
 cd "$REPO"
 echo "Task B start $(date)  commit $(git rev-parse --short HEAD 2>/dev/null || echo unknown)  threads $THREADS" | tee -a lean_snn/logs/task_b.log
 python -I biometrics/bio_run.py --dataset zenodo_bio --variants x_aug_lean_tau_amp \
-    --folds 0,1,2 --seeds 0,1 --threads "$THREADS" 2>&1 | tee -a lean_snn/logs/task_b.log
+    --folds 0,1,2 --seeds 0,1 --threads "$THREADS" \
+    --save-model "$WAVESPIKE_DATA_ROOT/models/lean_snn" 2>&1 | tee -a lean_snn/logs/task_b.log
 echo "Task B end $(date)" | tee -a lean_snn/logs/task_b.log

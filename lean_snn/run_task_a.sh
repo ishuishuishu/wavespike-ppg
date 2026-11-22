@@ -11,5 +11,6 @@ cd "$REPO"
 export BIO_CHANNEL=luma
 echo "Task A start $(date)  commit $(git rev-parse --short HEAD 2>/dev/null || echo unknown)  threads $THREADS" | tee -a lean_snn/logs/task_a.log
 python -I biometrics/bio_run.py --dataset seeing_red --variants x_lean_tau_amp \
-    --folds 0,1,2 --seeds 1 --train-stride 0.5 --threads "$THREADS" 2>&1 | tee -a lean_snn/logs/task_a.log
+    --folds 0,1,2 --seeds 1 --train-stride 0.5 --threads "$THREADS" \
+    --save-model "$WAVESPIKE_DATA_ROOT/models/lean_snn" 2>&1 | tee -a lean_snn/logs/task_a.log
 echo "Task A end $(date)" | tee -a lean_snn/logs/task_a.log

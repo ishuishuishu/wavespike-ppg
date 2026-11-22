@@ -7,14 +7,34 @@ This folder is everything a teammate needs to run the two remaining **lean SNN**
 | **A** (required) | Lean SNN on **Seeing Red**, no augmentation, seed 1 | 3 | about 20 min |
 | **B** | Lean SNN **with augmentation** on **Zenodo** across days | 6 | about 1 hour |
 
+Both tasks **save the trained models** as well as the results, so the models can be run on a Raspberry Pi later.
+
+## Deliverables (what to send back)
+
+| # | Deliverable | Where it is | Count |
+|---|---|---|---|
+| 1 | Task A result files `x_lean_tau_amp_f{0,1,2}_ts1.json` | `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/` | 3 |
+| 2 | Task B result files `x_aug_lean_tau_amp_f{0,1,2}_ts{0,1}.json` | `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/` | 6 |
+| 3 | Task A trained models `bio_seeing_red_luma_w10_trs0.5__x_lean_tau_amp_f{0,1,2}_ts1.pt` | `$WAVESPIKE_DATA_ROOT/models/lean_snn/` | 3 |
+| 4 | Task B trained models `bio_zenodo_bio_w10__x_aug_lean_tau_amp_f{0,1,2}_ts{0,1}.pt` | `$WAVESPIKE_DATA_ROOT/models/lean_snn/` | 6 |
+| 5 | Model check: output of `bash lean_snn/check_models.sh` (every model must print `runs OK`) | your terminal | 1 |
+| 6 | Logs `task_a.log`, `task_b.log` | `lean_snn/logs/` | 2 |
+| 7 | Results summary: output of `bash lean_snn/check_results.sh` | your terminal | 1 |
+| 8 | Git commit hash you ran, plus Python, PyTorch and NumPy versions | see section 9 | 1 |
+| 9 | Notes on anything unexpected (tracebacks, wrong person counts, odd numbers) | a short message | – |
+
+**Done means:** 9 result files, 9 model files, 9 × `runs OK`, both logs, and the summary. Send them to the project lead directly (a zip is fine; the models total under 1 MB). Don't commit them to the repository or post them publicly.
+
 Files in this folder:
 
 | File | Use |
 |---|---|
 | `README.md` | This guide |
-| `run_task_a.sh` | Runs Task A |
-| `run_task_b.sh` | Runs Task B |
+| `run_task_a.sh` | Runs Task A and saves its models |
+| `run_task_b.sh` | Runs Task B and saves its models |
 | `check_results.sh` | Prints the summary tables for both tasks |
+| `check_models.sh` | Reloads every saved model and runs it once |
+| `load_model.py` | Rebuilds one saved model and runs it (used by `check_models.sh`; the starting point for the Pi) |
 
 The scripts call the shared project code (`biometrics/bio_run.py` and `notebook/cells/`), so keep this folder inside the repository and run the scripts from anywhere in it.
 
@@ -49,13 +69,34 @@ Size: about 6k parameters (5,766 with Seeing Red's 14 people; 5,973 with Zenodo'
 
 **Do not change any setting, default or line of code.** If something looks wrong, stop and ask; don't fix it.
 
-## 2. Is there a saved model to continue training?
+## 2. Saved models
 
-**No.** The biometric runs save only a result file (predictions and metrics), not the trained weights. The only checkpoints on the original machine (`lean_tas_*.pt`) are from the atrial-fibrillation task: 2 classes and different data, so they can't be used here.
+**There is no earlier lean model to continue from.** Our earlier biometric runs saved only result files (predictions and metrics), not weights. The only checkpoints on the original machine (`lean_tas_*.pt`) are from the atrial-fibrillation task: 2 classes and different data, so they can't be used here.
 
 This doesn't block anything:
 - Each run is a separate training from scratch for one (fold, seed) pair: 150 epochs, and the **last epoch** is the one reported.
 - There is no half-trained lean run to resume. "Continuing" means running the missing (fold, seed) pairs below.
+
+**Your runs save their models.** `bio_run.py` has an option, `--save-model DIR`, which is off by default and is used by both run scripts. After each run it writes one `.pt` file, about 60 KB, to `$WAVESPIKE_DATA_ROOT/models/lean_snn/`. Each file holds:
+- `last_state`: the weights after the last epoch. **This is the model we report**, and the one for the Pi.
+- `best_state`: the weights at the lowest validation loss, kept for reference.
+- `cfg`: every model setting.
+- `identities`: the person IDs, in class order.
+- `amp_norm`: the mean and standard deviation used to scale the two amplitude features, computed on that fold's training data. The Pi needs these.
+- `input`: a description of the expected input: a 10 s window at 50 Hz, z-scored per window, with the 2 amplitude features appended.
+- The variant, dataset, fold, seed and best epoch.
+
+The option changes nothing else: training, results and result files are exactly as without it.
+
+To check a model rebuilds and runs:
+
+```bash
+python -I lean_snn/load_model.py $WAVESPIKE_DATA_ROOT/models/lean_snn/<file>.pt
+```
+
+It prints the variant, fold, seed, parameter count and `runs OK`. `bash lean_snn/check_models.sh` does this for every saved model.
+
+**For the Pi (later, not part of this handoff).** `load_model.py` needs PyTorch, which runs on a 64-bit Raspberry Pi OS. The NumPy-only Pi exporter in the notebook doesn't yet handle the amplitude-feature term these models use; extending it is a separate task.
 
 ## 3. How the tests work (so your numbers are comparable)
 
@@ -171,15 +212,14 @@ That is exactly:
 
 ```bash
 BIO_CHANNEL=luma python -I biometrics/bio_run.py --dataset seeing_red --variants x_lean_tau_amp \
-    --folds 0,1,2 --seeds 1 --train-stride 0.5 --threads 12
+    --folds 0,1,2 --seeds 1 --train-stride 0.5 --threads 12 \
+    --save-model $WAVESPIKE_DATA_ROOT/models/lean_snn
 ```
 
-**Output.** Three files in `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/`:
-- `x_lean_tau_amp_f0_ts1.json`
-- `x_lean_tau_amp_f1_ts1.json`
-- `x_lean_tau_amp_f2_ts1.json`
-
-The console log goes to `lean_snn/logs/task_a.log`.
+**Output.**
+- Three result files in `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/`: `x_lean_tau_amp_f0_ts1.json`, `x_lean_tau_amp_f1_ts1.json`, `x_lean_tau_amp_f2_ts1.json`.
+- Three model files in `$WAVESPIKE_DATA_ROOT/models/lean_snn/`: `bio_seeing_red_luma_w10_trs0.5__x_lean_tau_amp_f{0,1,2}_ts1.pt`. Each run prints `saved model ...` when its file is written.
+- The console log goes to `lean_snn/logs/task_a.log`.
 
 **What to expect.** On the original machine, seed 0 (last epoch, 5 windows, mean of 3 runs) gave **EER 25.4%** (range 20.0–30.4%) and top-1 37.6%. Seed 1 should land in a similar range, but not identical: the seed differs, and the thread count changes results slightly.
 
@@ -206,10 +246,14 @@ That is exactly:
 
 ```bash
 python -I biometrics/bio_run.py --dataset zenodo_bio --variants x_aug_lean_tau_amp \
-    --folds 0,1,2 --seeds 0,1 --threads 12
+    --folds 0,1,2 --seeds 0,1 --threads 12 \
+    --save-model $WAVESPIKE_DATA_ROOT/models/lean_snn
 ```
 
-**Output.** Six files `x_aug_lean_tau_amp_f{0,1,2}_ts{0,1}.json` in `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/`. The log goes to `lean_snn/logs/task_b.log`.
+**Output.**
+- Six result files `x_aug_lean_tau_amp_f{0,1,2}_ts{0,1}.json` in `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/`.
+- Six model files `bio_zenodo_bio_w10__x_aug_lean_tau_amp_f{0,1,2}_ts{0,1}.pt` in `$WAVESPIKE_DATA_ROOT/models/lean_snn/`.
+- The log goes to `lean_snn/logs/task_b.log`.
 
 **What to expect.** Our runs on Zenodo for the nearby models (last epoch, 5 windows, mean of 6 runs):
 
@@ -224,7 +268,8 @@ Task B is a new model/dataset pair, so there is no "correct" number. A mean EER 
 ## 7. If a run is interrupted
 
 - Just run the same script again.
-- Each finished (fold, seed) writes its own result file, and the script skips any run whose file already exists.
+- Each finished (fold, seed) writes its own result file and model file, and the script skips any run whose result file already exists.
+- If a run has a result file but no model file, tell the project lead. Don't delete the result file to force a rerun.
 - A run that was cut off midway starts again from epoch 0. There's no mid-run checkpoint.
 - Don't delete or edit result files.
 
@@ -240,26 +285,31 @@ This prints the summary tables:
 
 Read the rows where `n = 5`, the "EER% b/l" column, after the slash (last epoch).
 
-## 9. What to send back
+## 9. Check the models and send everything back
 
-1. The result files, unchanged:
-   - Task A: `x_lean_tau_amp_f{0,1,2}_ts1.json`.
-   - Task B: `x_aug_lean_tau_amp_f{0,1,2}_ts{0,1}.json`.
-2. `lean_snn/logs/task_a.log` and `lean_snn/logs/task_b.log`.
-3. The output of `bash lean_snn/check_results.sh`.
-4. The git commit hash you ran.
-5. Your Python, PyTorch and NumPy versions:
+1. Check every saved model rebuilds and runs:
 
    ```bash
+   bash lean_snn/check_models.sh
+   ```
+
+   It must list 9 models, each ending in `runs OK`. The predicted identity it prints is for a synthetic pulse, so it means nothing; only `runs OK` matters.
+2. Get your versions for deliverable 8:
+
+   ```bash
+   git log --oneline -1
    python -c "import sys, torch, numpy; print(sys.version, torch.__version__, numpy.__version__)"
    ```
 
-6. Anything unexpected:
-   - a `Traceback` or warning;
-   - a person/subject count other than 14 (Seeing Red) or 17 (Zenodo);
-   - numbers far outside the ranges above.
+3. Send everything in the **Deliverables** table at the top of this guide, unchanged. A zip of `results/bio_seeing_red_luma_w10_trs0.5/x_lean_tau_amp_*_ts1.json`, `results/bio_zenodo_bio_w10/x_aug_lean_tau_amp_*.json`, `models/lean_snn/` and `lean_snn/logs/` plus the two printouts covers it.
 
-Send these to the project lead directly. Don't commit result files or logs to the repository, and don't post them publicly.
+Report anything unexpected:
+- a `Traceback` or warning;
+- a person/subject count other than 14 (Seeing Red) or 17 (Zenodo);
+- numbers far outside the ranges above;
+- a model that doesn't print `runs OK`.
+
+Send these to the project lead directly. Don't commit result files, models or logs to the repository, and don't post them publicly.
 
 ## 10. Project rules
 
