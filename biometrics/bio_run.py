@@ -67,6 +67,18 @@ BIO_VARIANTS.update({
     "x_aug_raw_tau_amp":    {**_X, "tau_het": True, "amp_fusion": True, "augment": True, "use_wavelet": False, "use_ht": False},
     "x_aug_gru_fixed_amp":  {**_X, "amp_fusion": True, "augment": True, "arch": "gru", "learn_wavelet": False},
 })
+# P1-P7 spiking-wavelet designs from the literature, rebuilt for 1-D PPG (biometrics/spiking_wavelets.py). Same recipe as
+# x_tau_amp (150 epochs, tau_het, level inputs); only the wavelet part changes. learn_wavelet=False: their learnable parts
+# (if any) are ordinary parameters of the front end, trained at the main learning rate.
+_PW = {**_X, "tau_het": True, "amp_fusion": True, "learn_wavelet": False}
+for _n, _pw in [("p6_haar", "p6:haar"), ("p6_db2", "p6:db2"), ("p6_db8", "p6:db8"), ("p6_sym4", "p6:sym4"), ("p6_coif1", "p6:coif1"),
+                ("p7_dwtc", "p7:dwtc"), ("p7_mix", "p7:mix"), ("p1_doe", "p1:fixed"), ("p1_doe_learn", "p1:learn"),
+                ("p2_dot", "p2:fixed"), ("p4_sep", "p4:sep")]:
+    BIO_VARIANTS[f"x_{_n}"] = {**_PW, "pw": _pw}
+BIO_VARIANTS["x_p1_doe_penc"] = {**_PW, "pw": "p1:fixed", "pw_paper_encoder": True}
+# architecture-level designs on one small 1-D spiking Spikformer-style backbone (raw window in, like the papers)
+for _n, _m in [("stf_ssa", "ssa"), ("stf_fw", "fw"), ("stf_fwc", "fwc"), ("stf_swsa", "swsa"), ("stf_fatm", "fatm")]:
+    BIO_VARIANTS[f"x_{_n}"] = {**_X, "amp_fusion": True, "arch": "stf", "mixer": _m, "use_wavelet": False, "use_ht": False}
 # richer filterbank: undecimated wavelet-packet front end (make_packet); depth 5 = 32 uniform 0.78 Hz bands, keep <= 12.5 Hz
 _PK5 = {"packet_depth": 5, "packet_fmax": 12.5}; _PK4 = {"packet_depth": 4, "packet_fmax": 12.5}
 BIO_VARIANTS.update({
@@ -427,7 +439,10 @@ def main():
 
     import torch; torch.set_num_threads(a.threads)
     global AMP
-    g = load_notebook_code(); g["VARIANTS"].update(BIO_VARIANTS); make_amp_fusion(g); make_packet(g)
+    g = load_notebook_code(); g["VARIANTS"].update(BIO_VARIANTS)
+    sys.path.insert(0, HERE)                        # python -I drops the script's folder from sys.path
+    from spiking_wavelets import make_paper_frontends, make_token_nets
+    make_token_nets(g); make_amp_fusion(g); make_packet(g); make_paper_frontends(g)
     loader = {"seeing_red": load_seeing_red, "zenodo_bio": load_zenodo_bio, "mimic_bio": load_mimic_bio, "bidmc_bio": load_bidmc_bio}[a.dataset]
     trs = a.train_stride or a.stride
     X, y, S, V, U = loader(root, a.win, trs)

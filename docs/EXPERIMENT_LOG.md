@@ -101,7 +101,32 @@ EER %, 5 windows, 6 repeats. Only the wavelet changes within a column.
 - Zenodo wrist: every method at chance.
 - CinC 2015: 0.672 vs 0.671.
 
-## Plan: partly learnable spiking-wavelet designs P1–P7 (not started; awaiting go-ahead)
+### P1–P7 spiking-wavelet designs, running (started after the go-ahead)
+- Code: `biometrics/spiking_wavelets.py`. Every gap a paper leaves, and every choice made to fill it, is in the docstring.
+- Variants are defined in `bio_run.py`.
+- All 17 variants passed a 2-epoch smoke test.
+
+| Code | Design |
+|---|---|
+| `x_p6_haar`, `x_p6_db2`, `x_p6_db8`, `x_p6_sym4`, `x_p6_coif1` | P6: fixed DWT, family sweep; fixed db4 is `x_fixed_tau_amp` |
+| `x_p7_dwtc` | P7 as published: bior1.1 + haar + db1 with learnable scalars |
+| `x_p7_mix` | Our P7 extension: db4 + sym4 + coif1 |
+| `x_p1_doe` | P1, fixed difference-of-exponentials filters |
+| `x_p1_doe_learn` | Our extension: learnable time constants |
+| `x_p1_doe_penc` | P1 plus its own fixed encoder (threshold 0.1) |
+| `x_p2_dot` | P2, cascaded integrators |
+| `x_p4_sep` | P4: Haar + learnable separable conv per sub-band |
+| `x_stf_ssa` | Shared 1-D spiking-transformer backbone: Spikformer attention baseline |
+| `x_stf_fw` | P7 FW head, parameter-free Haar |
+| `x_stf_fwc` | P7 DWT-C |
+| `x_stf_swsa` | P3 SWSA |
+| `x_stf_fatm` | P5 FATM with ternary spikes |
+
+- Queue: 34 jobs (17 variants × Zenodo across days and Seeing Red across sittings, 3 folds × 2 seeds each).
+- Workers: 8 queue workers × 3 threads (`pw_worker.sh`, `pw_jobs.txt`, logs `pw1.log`–`pw8.log` on the compute machine).
+- Each worker takes the next job as soon as it finishes, so all cores stay busy once the earlier jobs end.
+
+## Plan: partly learnable spiking-wavelet designs P1–P7 (approved; being run)
 
 Goal: compare these designs from the literature with our fully learnable wavelet SNN and our partly learnable (shared-filter) SNN.
 
