@@ -42,7 +42,7 @@ Results are top-1 accuracy at 1 · 3 · 5 windows.
 | Our CWT-CNN | 93.7 · 99.7 · 100 | 93.6 · 98.7 · 99.6 |
 | Our SNN, fully learnable wavelet, with augmentation | 90.6 · 97.3 · 99.2 | 86.0 · 95.8 · 98.2 |
 | Our SNN, fully learnable wavelet | 84.9 · 96.6 · 98.2 | 83.8 · 95.4 · 98.3 |
-| Lean SNN | 83.1 · 95.3 · 97.4 | 80.3 · 93.1 · 96.8 |
+| Lean SNN | 83.1 · 95.6 · 97.6 | 80.3 · 93.1 · 96.8 |
 | GRU | 80.0 · 93.3 · 98.4 | 73.3 · 89.6 · 95.1 |
 | SNN without wavelet | 66.3 · 86.9 · 91.8 | 73.3 · 89.7 · 95.9 |
 
