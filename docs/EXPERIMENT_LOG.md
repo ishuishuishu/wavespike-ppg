@@ -162,6 +162,7 @@ EER %, 5 windows, 6 repeats. Only the wavelet changes within a column.
   - Symptoms: about 0.77 core each, about 5× more forced context switches, and no run saved after 5.5 h, while sym4 (same code, started together) saved 6 per dataset at about 35–40 min per run.
   - Action, with the user's approval: stopped them (nothing saved, nothing lost) and requeued them at the front with `--threads 2`.
   - Done so far: P6 sym4 6/6 on both datasets; coif1 1/6 on each.
+- **About 13:35:** at the user's request, all running P6 jobs were set to the lowest priority (`nice` 19), the same as the two paper networks.
 - **13:30 correction:** the two extra workers inherited the lowered priority from the command that started them, so P7 ran at `nice` 19, the lowest. A normal user cannot raise a priority again, so both P7 runs (27 min in, nothing saved) were stopped and restarted from a fresh shell at `nice` 10.
 - **Fidelity checks on the papers' own data (approved; run at the very end, after every other job):**
   - P1/P2: reconstruct MIT-BIH ECG with our DoE and DoT filterbanks and compare the RMSE with their Table II (for example, DoE 0.085 and DoT 0.059 at c = 2, K = 8).
