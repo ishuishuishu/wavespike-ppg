@@ -2,15 +2,15 @@
 
 A small spiking neural network (SNN) with a learnable wavelet front end for photoplethysmography (PPG), designed to run on edge devices such as a Raspberry Pi. It was first built for atrial fibrillation (AF) detection and is now evaluated on PPG biometrics (recognising a person from their pulse).
 
-**Start here:** [`docs/HANDOFF.md`](docs/HANDOFF.md) explains the project, every result and the open tasks. [`docs/results.html`](docs/results.html) has every metric from every run; download it and open it in a browser.
+**Start here:** [`docs/HANDOFF.md`](docs/HANDOFF.md) explains the project, every result and the open tasks. [`docs/results.html`](docs/results.html) has every metric from every run; download it and open it in a browser. [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md) is the running record of every experiment and the plan for the next ones.
 
 ## What's in the repository
 
 | Folder | Contents |
 | --- | --- |
 | `notebook/` | `wavespike_ppg_colab_v3.ipynb`: the model plus the AF pipeline (data, training, evaluation, NumPy export). `cells/` holds the same code as separate files, which the biometric scripts import |
-| `biometrics/` | `bio_run.py` (biometric experiments: datasets, splits, baselines, metrics), `paper_repro.py` (published methods under their own protocols), `prepare_seeing_red.py` and `prepare_zenodo.py` (dataset preparation) |
-| `edge/` | `rpi_infer.py` (NumPy-only inference) and `pi_bench.py` (Raspberry Pi latency, memory and energy benchmark) |
+| `biometrics/` | `bio_run.py` (biometric experiments: datasets, splits, baselines, metrics), `paper_repro.py` (published methods under their own protocols), `paper_models.py` (published CWT networks built from their papers), `prepare_seeing_red.py` and `prepare_zenodo.py` (dataset preparation) |
+| `edge/` | `rpi_infer.py` (NumPy-only inference) and `pi_bench.py` (Raspberry Pi latency, memory and energy benchmark), `energy_estimate.py` (hardware-free energy estimates from operation counts) |
 | `docs/` | Team handoff and the full results page |
 | `archive/` | Other analysis scripts used during development; see `archive/README.md` |
 | `manuscript/` | Manuscript drafts (Word) |

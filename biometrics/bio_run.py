@@ -62,6 +62,9 @@ BIO_VARIANTS.update({
     # wavelet-tier comparison on the same SNN: static (x_aug_fixed_tau_amp) / partially learnable (one shared learnable
     # filter for all levels) / fully adaptive (x_aug_tau_amp: one learnable filter per level, DeSpaWN-style)
     "x_aug_shared_tau_amp": {**_X, "tau_het": True, "amp_fusion": True, "augment": True, "per_level": False},
+    # wavelet ablation, filled so every tier exists with AND without augmentation (only the wavelet changes per row)
+    "x_shared_tau_amp":     {**_X, "tau_het": True, "amp_fusion": True, "per_level": False},
+    "x_aug_raw_tau_amp":    {**_X, "tau_het": True, "amp_fusion": True, "augment": True, "use_wavelet": False, "use_ht": False},
     "x_aug_gru_fixed_amp":  {**_X, "amp_fusion": True, "augment": True, "arch": "gru", "learn_wavelet": False},
 })
 # richer filterbank: undecimated wavelet-packet front end (make_packet); depth 5 = 32 uniform 0.78 Hz bands, keep <= 12.5 Hz
@@ -80,6 +83,8 @@ BIO_VARIANTS.update({
     "dwt_svm_amp": {"_kind": "beat_lr", "_feat": "dwt", "_svm": True, "_amp": True},
     "cwt_cnn":     {"_kind": "cwt_cnn"},                                         # Morlet scalogram + small 2-D CNN (2023-25 CWT-CNN papers)
     "cwt_cnn_amp": {"_kind": "cwt_cnn", "_amp": True},
+    # our CWT-CNN trained with exactly the SNN's (x_aug_tau_amp) recipe: 150 epochs x 1,600 balanced windows, augmentation, lr 2e-3, clip
+    "cwt_cnn_x_amp": {"_kind": "cwt_cnn", "_amp": True, "_recipe": True},
 })
 BIO_VARIANTS_END = {
     "h128":    {"hidden": 128},
@@ -297,35 +302,52 @@ def wavelet_features(X, fs, wavelet="db8", level=5):
         F.append(f)
     return np.nan_to_num(np.asarray(F, np.float64))
 
-def cwt_cnn_probs(X, AMP, y, tr, va, te, K, seed, threads, fs=50, epochs=60, use_amp=False):
-    """Morlet continuous-wavelet scalogram (32 scales, 0.5-8 Hz, log-magnitude) -> small 2-D CNN. Same class-weighted CE,
-    AdamW + cosine schedule and fixed epoch count as our models; last-epoch weights; no test information used."""
+def cwt_cnn_probs(X, AMP, y, tr, va, te, K, seed, threads, fs=50, epochs=60, use_amp=False, recipe=None, width=16):
+    """OUR OWN CNN (not any paper's exact architecture): Morlet continuous-wavelet scalogram (32 scales, 0.5-8 Hz,
+    log-magnitude) -> small 2-D CNN (width/2w/4w channels). Default recipe: class-weighted CE, AdamW 1e-3 + cosine, 60 epochs
+    over all training windows, no augmentation, last-epoch weights.
+    recipe = the SNN's training recipe (dict with g = notebook globals): 150 epochs, each a class-balanced subsample of
+    1,600 training windows, the notebook's augment_batch applied to the raw window BEFORE the CWT, lr 2e-3, batch 64,
+    grad-norm clip 1.0, last-epoch weights - i.e. exactly what x_aug_tau_amp gets. No test information is used."""
     import pywt, torch, torch.nn as nn, torch.nn.functional as Fn
     torch.manual_seed(seed); np.random.seed(seed); torch.set_num_threads(threads)
     freqs = np.geomspace(0.5, 8, 32); sc = pywt.central_frequency("morl")*fs/freqs
-    S = np.empty((len(X), 32, -(-X.shape[1]//4)), np.float32)     # ceil: matches the [::4] slice for any window length
-    for i in range(0, len(X), 256):
-        c, _ = pywt.cwt(X[i:i+256], sc, "morl", sampling_period=1/fs, axis=-1)      # (32, b, T)
-        S[i:i+256] = np.log(np.abs(c[:, :, ::4]).transpose(1, 0, 2) + 1e-3)
-    S = (S - S[tr].mean())/(S[tr].std() + 1e-6)
+    meth = "fft" if recipe else "conv"          # fft only for the recipe run (CWT recomputed per augmented batch); default unchanged
+    def scal(Xb):
+        out = np.empty((len(Xb), 32, -(-Xb.shape[1]//4)), np.float32)     # ceil: matches the [::4] slice for any window length
+        for i in range(0, len(Xb), 256):
+            c, _ = pywt.cwt(Xb[i:i+256], sc, "morl", sampling_period=1/fs, axis=-1, method=meth)      # (32, b, T)
+            out[i:i+256] = np.log(np.abs(c[:, :, ::4]).transpose(1, 0, 2) + 1e-3)
+        return out
+    S = scal(X); mu, sd = S[tr].mean(), S[tr].std() + 1e-6
+    S = (S - mu)/sd
     Am = ((AMP - AMP[tr].mean(0))/(AMP[tr].std(0) + 1e-6)).astype(np.float32)
     class Net(nn.Module):
         def __init__(s):
             super().__init__()
-            s.c = nn.Sequential(nn.Conv2d(1, 16, 3, padding=1), nn.BatchNorm2d(16), nn.ReLU(), nn.MaxPool2d(2),
-                                nn.Conv2d(16, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(), nn.MaxPool2d(2),
-                                nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(), nn.AdaptiveAvgPool2d(1), nn.Flatten(),
+            w = width
+            s.c = nn.Sequential(nn.Conv2d(1, w, 3, padding=1), nn.BatchNorm2d(w), nn.ReLU(), nn.MaxPool2d(2),
+                                nn.Conv2d(w, 2*w, 3, padding=1), nn.BatchNorm2d(2*w), nn.ReLU(), nn.MaxPool2d(2),
+                                nn.Conv2d(2*w, 4*w, 3, padding=1), nn.BatchNorm2d(4*w), nn.ReLU(), nn.AdaptiveAvgPool2d(1), nn.Flatten(),
                                 nn.Dropout(0.3))
-            s.o = nn.Linear(64 + (Am.shape[1] if use_amp else 0), K)
+            s.o = nn.Linear(4*w + (Am.shape[1] if use_amp else 0), K)
         def forward(s, x, a): h = s.c(x.unsqueeze(1)); return s.o(torch.cat([h, a], 1) if use_amp else h)
-    m = Net(); opt = torch.optim.AdamW(m.parameters(), 1e-3, weight_decay=1e-4)
+    m = Net(); opt = torch.optim.AdamW(m.parameters(), 2e-3 if recipe else 1e-3, weight_decay=1e-4)
     sch = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs)
     cnt = np.bincount(y[tr], minlength=K); cw = torch.tensor(cnt.sum()/(K*np.maximum(cnt, 1)), dtype=torch.float32)
     rng = np.random.default_rng(seed); St, At, yt = torch.tensor(S), torch.tensor(Am), torch.tensor(y)
+    if recipe: g = recipe["g"]; g["AMP_COLS"] = 0; arng = np.random.default_rng(seed + 7919)
     for ep in range(epochs):
         m.train()
-        for b in np.array_split(rng.permutation(tr), max(1, len(tr)//64)):
-            loss = Fn.cross_entropy(m(St[b], At[b]), yt[b], weight=cw); opt.zero_grad(); loss.backward(); opt.step()
+        if recipe:                               # the SNN's recipe: balanced 1,600-window subsample, augmentation before the CWT
+            for b in g["batches"](g["balanced_subsample"](np.asarray(tr), recipe["n_per_epoch"], rng, y), 64):
+                xb = g["augment_batch"](np.ascontiguousarray(X[b]), arng, fs)
+                sb = torch.tensor((scal(xb) - mu)/sd)
+                loss = Fn.cross_entropy(m(sb, At[b]), yt[b], weight=cw); opt.zero_grad(); loss.backward()
+                torch.nn.utils.clip_grad_norm_(m.parameters(), 1.0); opt.step()
+        else:
+            for b in np.array_split(rng.permutation(tr), max(1, len(tr)//64)):
+                loss = Fn.cross_entropy(m(St[b], At[b]), yt[b], weight=cw); opt.zero_grad(); loss.backward(); opt.step()
         sch.step()
     m.eval()
     with torch.no_grad():
@@ -448,9 +470,11 @@ def main():
                     clf = make_pipeline(StandardScaler(), est).fit(Fm[tr], y[tr])
                     Pv, Pt = clf.predict_proba(Fm[va]), clf.predict_proba(Fm[te]); ent = {"best": (Pv, Pt), "last": (Pv, Pt)}
                 elif spec.get("_kind") == "cwt_cnn":
+                    rc = {"g": g, "n_per_epoch": 64 if a.smoke else 1600} if spec.get("_recipe") else None
+                    ep = 2 if a.smoke else (150 if rc else 60)
                     Pv, Pt, npar = cwt_cnn_probs(X, AMP, y, tr, va, te, len(U), ts, a.threads, CFG.fs,
-                                                 epochs=2 if a.smoke else 60, use_amp=spec.get("_amp", False))
-                    ent = {"best": (Pv, Pt), "last": (Pv, Pt)}; extra = {"params": int(npar)}
+                                                 epochs=ep, use_amp=spec.get("_amp", False), recipe=rc, width=spec.get("_width", 16))
+                    ent = {"best": (Pv, Pt), "last": (Pv, Pt)}; extra = {"params": int(npar), "epochs_run": ep}
                 else:
                     c = g["variant_config"](v, ts, base=CFG); c.n_classes = len(U)
                     if a.smoke: c.epochs, c.patience = 2, 1

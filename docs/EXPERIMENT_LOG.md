@@ -1,0 +1,140 @@
+# WaveSpike-PPG experiment log
+
+This is the running record of every experiment: what was run, why, with which script and settings, where the results are and what they showed. Add an entry whenever a run starts or finishes, so no work is lost. Numbers are from our own runs unless marked **(paper)**.
+
+Result files live on the compute machine under `wavespike_data/results/` (not in git). Each run writes one JSON file per fold and seed with every metric and every test probability, so any statistic can be recomputed without retraining.
+
+## Model naming rule
+
+Every model is written and trained by us. When a model follows a paper, its name says so and how closely:
+
+- **Ours**: this project's own design.
+  - Our SNN, with the wavelet type always stated: fully learnable (`x_tau_amp`), partly learnable (`x_shared_tau_amp`), fixed (`x_fixed_tau_amp`), none (`x_raw_tau_amp`).
+  - Lean SNN (`x_lean_tau_amp`).
+  - GRU control (`x_gru_amp`).
+  - **Our CWT-CNN** (`cwt_cnn_amp`, `cwt_cnn_x_amp`): our own small CNN on a Morlet scalogram, in the style of the CWT-CNN papers, **not** any paper's exact network.
+- **Ours, paper-style**: our own feature sets with standard classifiers.
+  - Beat features + SVM/LR (`beat_*`), in the style of Lovisotto et al. 2020.
+  - DWT features + SVM/LDA/kNN (`dwt_*`), generic baselines.
+- **Paper reproduction**: a paper's own method, built from its text. Every gap the paper leaves is listed in the script and in the result file.
+  - Lovisotto 2020 and Yadav 2017: `biometrics/paper_repro.py`.
+  - Ibrahim 2024 and Rahman 2025: `biometrics/paper_models.py`.
+  - P1–P7: planned below.
+
+## Log
+
+### Session-disjoint biometrics (main results), done
+- Zenodo wrist PPG across days (17 people), 3 rotation folds × 2 seeds. EER, 5 windows:
+  - our CWT-CNN 14.0%;
+  - our SNN with fully learnable wavelet 15.6%;
+  - our GRU 18.3%;
+  - our beat SVM 19.7%;
+  - our SNN without wavelet 20.2%.
+  - The SNN beats the SVM, GRU and no-wavelet SNN in 6 of 6 repeats, and loses to the CNN in 5 of 6.
+- Seeing Red across sittings (14 people): our beat SVM 19.6%; our best SNN 21.8% (`x_aug_e300`, picked on test, so optimistic; picked on validation, `x_aug_wavlr`, 25.4%).
+
+### Same-session protocol (as most papers use), mostly done
+Results are top-1 accuracy at 1 · 3 · 5 windows.
+
+| Model | BIDMC | MIMIC |
+|---|---|---|
+| Our beat SVM | 95.8 · 99.8 · 100 | 95.7 · 99.6 · 100 |
+| Our CWT-CNN | 93.7 · 99.7 · 100 | 93.6 · 98.7 · 99.6 |
+| Our SNN, fully learnable wavelet, with augmentation | 90.6 · 97.3 · 99.2 | 86.0 · 95.8 · 98.2 |
+| Our SNN, fully learnable wavelet | 84.9 · 96.6 · 98.2 | 83.8 · 95.4 · 98.3 |
+| Lean SNN | 83.1 · 95.3 · 97.4 | 80.3 · 93.1 · 96.8 |
+| GRU | 80.0 · 93.3 · 98.4 | 73.3 · 89.6 · 95.1 |
+| SNN without wavelet | 66.3 · 86.9 · 91.8 | 73.3 · 89.7 · 95.9 |
+
+- Zenodo, same session: our CWT-CNN 73.8% and our SNN 54.6% (5 windows).
+- Still running: Zenodo same-session GRU (one rerun; its result file had been left empty by the reboot), plus the augmented, no-wavelet and lean SNNs.
+
+### Wavelet ablation, partly running
+EER %, 5 windows, 6 repeats. Only the wavelet changes within a column.
+
+| Front end | Zenodo, no aug | Zenodo, aug | Seeing Red, no aug | Seeing Red, aug |
+|---|---|---|---|---|
+| None | 20.2 | running | 29.5 | running |
+| Fixed db4 | 16.1 | running | 24.7 | 23.8 |
+| Partly learnable (one shared filter) | running | 16.1 | running | 23.9 |
+| Fully learnable (filter per level) | 15.6 | 16.0 | 28.7 (3 of 6 runs) | 24.3 |
+
+- The earlier page compared rows with and without augmentation; this table fixes that.
+- New variants added to fill the gaps: `x_shared_tau_amp`, `x_aug_raw_tau_amp`.
+- Screens: `wA` (Zenodo), `wB` (Seeing Red).
+
+### Our CWT-CNN trained with exactly our SNN's recipe, running
+- What changes: `cwt_cnn_x_amp` gets 150 epochs × 1,600 class-balanced windows, the same augmentation (applied before the CWT), lr 2e-3, batch 64 and gradient clipping 1.0, with the last epoch kept.
+- Why: the CNN beat the SNN with a shorter recipe (60 epochs, no augmentation), so this checks the comparison is fair.
+- Where: Zenodo across days (screen `cA`) and Seeing Red (screen `cB`).
+
+### Paper reproductions
+- **Lovisotto 2020**, on its own data and protocol: matches. EER 9.7% (1 beat) and 2.1% (20 beats); top-1 73% → 96%.
+- **Yadav 2017**: our version is approximate and does not match. 12.2% on BIDMC vs **(paper)** 0.46% on CapnoBase. Their exact pipeline (peak-centred segments, single Morse scale, DLDA, Pearson matching) is still to build.
+- **CVT-ConvMixer protocol with our own CNN**: BIDMC 93.8% random / 92.2% chronological; MIMIC 88.2% / 81.3%. **(paper)** 95%.
+- **Low-frame-rate protocol with our own CNN**: Seeing Red 50.8% / 43.0%. **(paper)** 98% on CFISHR.
+- **Their exact networks** (`biometrics/paper_models.py`, running):
+  - Ibrahim et al. 2024 CVT-ConvMixer (22.5M parameters) on RW-PPG, one of their own three datasets. RW-PPG has been downloaded (Mendeley 10.17632/yynb8t9x3d, CERN OHL licence). Screen `pmA`, 5 folds; about 2 min per epoch while the CPU is shared.
+  - Rahman & Banavar 2025 CVT-ConvMixer-LSTM on BIDMC, and on Seeing Red decimated to 14 Hz (screen `pmB`).
+  - CFISHR is on IEEE DataPort under a signed licence (EULA), so it is not open access and is not used.
+  - Ibrahim on BIDMC/MIMIC would take about 45 h each on our CPU and has not been started.
+
+### Energy without hardware, running
+- `edge/energy_estimate.py` (screen `eA`) counts per 10 s window:
+  - parameters;
+  - dense multiply-adds;
+  - spike-driven adds (SynOps), using spike rates measured on test windows;
+  - neuron updates.
+- It then applies four energy models:
+  - **E1:** 45 nm fp32 (Horowitz 2014, Fig. 1.1.9: multiply-add 4.6 pJ, add 0.9 pJ);
+  - **E2:** int8 (0.23 / 0.03 pJ);
+  - **E3:** E1 plus SRAM weight reads at 5 pJ per weight;
+  - **E4:** Loihi (Davies 2018: 23.6 pJ per synaptic op, 81/52 pJ per active/inactive neuron update, 1.7 pJ per spike).
+- The SNN is scored both dense (as a CPU runs it) and event-driven.
+- Output: `results/energy_estimates.json`, to be compared later with energy measured on the Pi.
+- Both per-operation tables were checked against the source PDFs.
+- A smoke test gave, for our SNN: dense E1 14.3 µJ, event-driven E1 0.73 µJ, Loihi 6.6 µJ per window. These come from a 1-epoch model, so they are not results.
+- The CPU energy counters (RAPL) on the workstation need root to read; not enabled.
+
+### AF detection (stopped)
+- MIMIC PERform: our SNN AUROC 0.611 (last) / 0.668 (best), against the interval baseline 0.919.
+- Zenodo wrist: every method at chance.
+- CinC 2015: 0.672 vs 0.671.
+
+## Plan: partly learnable spiking-wavelet designs P1–P7 (not started; awaiting go-ahead)
+
+Goal: compare these designs from the literature with our fully learnable wavelet SNN and our partly learnable (shared-filter) SNN.
+
+None of the seven papers is about PPG:
+- P1 is ECG/speech reconstruction;
+- P2 is a theory paper with synthetic signals;
+- P3 is EEG;
+- P4 is image restoration;
+- P5 and P7 are image and event-camera classification;
+- P6 is MNIST digits.
+
+So each is reproduced as its wavelet design, rebuilt for 1-D PPG, inside the same pipeline: same data, folds, seeds, metrics, training recipe (150 epochs, last epoch) and SNN core where possible. Within a comparison only the wavelet part changes. Every choice a paper leaves open is written in the code and in the result file.
+
+| # | Paper | Wavelet design (diagram tier) | 1-D PPG version | Learnable part |
+|---|---|---|---|---|
+| P1 | Pedersen, Lindeberg, Gerstoft, arXiv 2605.09770 (2026), *Encoding and decoding temporal signals with spiking bandpass wavelets* | Integrated: the LIF membrane is the filter. Difference of truncated exponentials (DoE), one integrator per scale. Dual ± populations, threshold-crossing coding, fixed threshold (θ = 0.1) | Replace our SWT with K DoE channels ψ_k = h(μ_k) − h(μ_{k−1}), μ geometric with c = 2, covering about 0.4–12 Hz at 50 Hz. Our ± LIF encoder (12 channels) is already their dual-population coding | None (paper is closed-form); optional variant with learnable μ_k |
+| P1/P2 DoT | Same, plus Pedersen et al., arXiv 2602.02020 (ICASSP 2026), *Scale-covariant spiking wavelets* | Cascaded LIF integrators per scale (time-causal limit kernel); difference of adjacent-scale kernels | K = 7 cascaded exponentials, μ_1 = c^{1−K}√τ_max, μ_k = c^{k−K−1}√(c²−1)√τ_max, c = √2; bandpass = adjacent-scale difference | None (fixed) |
+| P3 | Yuan, Wei, Liu, Front. Neurosci. 2025, *Spiking neural networks for EEG signal analysis using wavelet transform* (SpikeWavformer) | Haar DWT fused with spiking self-attention by concatenation (SWSA) | Small 1-D spiking transformer over time tokens: spiking self-attention branch and Haar DWT → conv → IDWT branch, concatenated. LIF threshold 0.5, 4 time steps | Attention and conv; wavelet fixed |
+| P4 | Zhao et al., arXiv 2606.18644 (Pattern Recognition 2026), *Spiking pyramid wavelet transformation* | Fixed Haar DWT + small learnable separable conv per sub-band; pyramid levels merged through IDWT linearity | Haar a-trous pyramid (2 levels per block), spiking depthwise + pointwise conv on each sub-band, outputs summed via IDWT | Small kernels per sub-band; wavelet fixed |
+| P5 | Fang et al., ECCV 2024, *Spiking Wavelet Transformer* (SWformer; code: github.com/bic-L/Spiking-Wavelet-Transformer) | Frequency-aware token mixer: spiking Haar → learnable block-diagonal weights (K blocks) → inverse Haar, in parallel with spatial conv and channel-mixing branches, summed. Ternary spikes {−1, 0, 1} | 1-D FATM over time: Haar of the spike train, block-diagonal weights (K = 2 and 4), inverse Haar, plus conv and pointwise branches; ternary IF neuron inside the wavelet branch | Block weights; wavelet fixed |
+| P6 | Aghabarar, Kiani, Keshavarzi, JAIDM 11(2) 2023, *Digit recognition in SNNs using wavelet transform* | Two-stage: fixed DWT preprocessing, then constant-current LIF encoding, then conv SNN; several wavelet families compared | Fixed DWT front end with a family sweep (haar, db2, db4, db8, sym4, coif1) into our SNN | None |
+| P7 | Wang, Zhang, Zhang, Xu, arXiv 2403.18228 (2024), *Fourier or wavelet bases as counterpart self-attention in Spikformer* (FWformer) | Fixed bases replace self-attention, parameter-free; DWT-C mixes Bior1.1 + Haar + Db1 with three learnable scalars | (a) as published: three bases with learnable a, b, c; (b) our extension with genuinely different bases (db4, sym4, coif1), because **Bior1.1, Haar and Db1 are the same Haar filter**, so (a) reduces to one learnable gain | Mixing scalars only |
+
+Order, cheapest and closest to our model first:
+1. P6 and P7: front-end swaps only.
+2. P1 and P2: replace the SWT with the LIF filterbank.
+3. P4: per-sub-band kernels.
+4. P5 and P3: these need a small 1-D spiking transformer core, so they also get a version with our recurrent core to isolate the wavelet effect.
+
+Runs: Zenodo across days and Seeing Red across sittings, 3 folds × 2 seeds, both with and without augmentation. Energy is counted for each with `edge/energy_estimate.py`.
+
+## Open items
+- RW-PPG licence (CERN OHL) is an unusual licence for data. Check before publishing results that use it.
+- Enabling the CPU energy counters (RAPL) needs root on the workstation: the owner's decision.
+- Ibrahim network on BIDMC/MIMIC (about 45 h each): run or skip?
+- A CNN shrunk to the SNN's size (`cwt_cnn` with width 4, about 6k parameters): proposed in the plan, not started.
