@@ -5,9 +5,25 @@ This folder is everything a teammate needs to run the two remaining **lean SNN**
 | Task | What | Runs | Time (12 CPU threads) |
 |---|---|---|---|
 | **A** (required) | Lean SNN on **Seeing Red**, no augmentation, seed 1 | 3 | about 20 min |
-| **B** | Lean SNN **with augmentation** on **Zenodo** across days | 6 | about 1 hour |
+| **B** (required) | Lean SNN **with augmentation** on **Zenodo** across days | 6 | about 1 hour |
 
 Both tasks **save the trained models** as well as the results, so the models can be run on a Raspberry Pi later.
+
+## Checklist: the whole job, in order
+
+Each step links to its section. Tick them off as you go.
+
+1. [ ] Clone the repo, create the Python environment, set `WAVESPIKE_DATA_ROOT` (§4.1).
+2. [ ] Download and prepare Seeing Red; check it says **14 users** (§4.2).
+3. [ ] Download and prepare Zenodo; check it says **17 subjects** (§4.3).
+4. [ ] Run both smoke tests; check there's no `Traceback` (§4.4).
+5. [ ] Run Task A: `bash lean_snn/run_task_a.sh` (§5).
+6. [ ] Run Task B: `bash lean_snn/run_task_b.sh` (§6).
+7. [ ] Print the results: `bash lean_snn/check_results.sh` (§8).
+8. [ ] Check the models: `bash lean_snn/check_models.sh`, with 9 × `runs OK` (§9).
+9. [ ] Send back everything in the Deliverables table (§9).
+
+Task A and Task B are independent; run them one after the other, not at the same time.
 
 ## Deliverables (what to send back)
 
@@ -140,21 +156,32 @@ It prints the variant, fold, seed, parameter count and `runs OK`. `bash lean_snn
    pip install numpy scipy scikit-learn pandas h5py PyWavelets opencv-python-headless
    ```
 
-3. Make a data folder **outside** the repository and point `WAVESPIKE_DATA_ROOT` at it. Add the `export` line to every new shell:
+3. Make a data folder **outside** the repository and point `WAVESPIKE_DATA_ROOT` at it:
 
    ```bash
    mkdir -p ~/wavespike_data/raw ~/wavespike_data/processed
    export WAVESPIKE_DATA_ROOT=~/wavespike_data
    ```
 
+**In every new shell**, before running anything, go to the repository folder and run these two lines again (or add them to your `~/.bashrc`):
+
+```bash
+source .venv/bin/activate
+export WAVESPIKE_DATA_ROOT=~/wavespike_data
+```
+
+The run scripts stop with a clear message if `WAVESPIKE_DATA_ROOT` isn't set or the data isn't prepared.
+
 Download the data on the server itself.
+
+**Your data will match ours exactly.** Both preparation scripts are deterministic: same input files, same windows, in the same order (fixed random seed). The folds are built from those windows, so your fold 0 is our fold 0. Use the full downloads, with no files left out.
 
 ### 4.2 Seeing Red data (needed for Task A)
 
-- **Source.** Seeing Red (Lovisotto et al., CVPRW 2020), on the Oxford Research Archive. Open access, ODC-PDDL licence.
-- **What it is.** Fingertip-on-phone-camera videos of 14 people over several sittings.
+- **Source.** The dataset for Lovisotto, Turner, Eberz and Martinovic, *Seeing Red: PPG Biometrics Using Smartphone Cameras* (CVPR Workshops 2020), on the Oxford Research Archive (ora.ox.ac.uk; search for "Seeing Red"). Open access, ODC-PDDL licence.
+- **What it is.** Fingertip-on-phone-camera videos of 14 people over several sittings. The videos zip is about 590 MB.
 
-1. Download the videos zip from the Oxford Research Archive record for the Seeing Red dataset and unzip it. You need a folder with **one subfolder per person**, each holding `.mp4` files. Example: `~/seeing_red/videos/`.
+1. Download the videos zip from that record and unzip it. You need a folder with **one subfolder per person**, each holding `.mp4` files. Example: `~/seeing_red/videos/`.
 2. Convert the videos to PPG (mean red/luma intensity per frame, inverted, resampled to 50 Hz):
 
    ```bash
@@ -223,7 +250,7 @@ BIO_CHANNEL=luma python -I biometrics/bio_run.py --dataset seeing_red --variants
 
 **What to expect.** On the original machine, seed 0 (last epoch, 5 windows, mean of 3 runs) gave **EER 25.4%** (range 20.0–30.4%) and top-1 37.6%. Seed 1 should land in a similar range, but not identical: the seed differs, and the thread count changes results slightly.
 
-## 6. Task B: Zenodo, lean SNN with augmentation
+## 6. Task B (required): Zenodo, lean SNN with augmentation
 
 **Why.** On Zenodo across days, we have the lean SNN without augmentation and the full SNN with augmentation, but not the lean SNN **with** augmentation. This fills that gap, so "lean vs full" can be compared with augmentation on both datasets. (On Seeing Red, `x_aug_lean_tau_amp` is already done.)
 
