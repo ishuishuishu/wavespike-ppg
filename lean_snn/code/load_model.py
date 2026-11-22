@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Load a model saved with bio_run.py --save-model and check it rebuilds and runs.
 
-Usage: python -I lean_snn/load_model.py <model.pt> [best|last]      (default: last, the checkpoint we report)
+Usage: python -I lean_snn/code/load_model.py <model.pt> [best|last]      (default: last, the checkpoint we report)
 
 It rebuilds the network from the saved config, loads the weights (strict: every tensor must match), runs it on
 one synthetic 10 s window and prints the class probabilities. This is the starting point for the Raspberry Pi
@@ -13,8 +13,8 @@ import numpy as np, torch
 # the shared notebook code creates raw/processed/results under the data root; no data is read here
 os.environ.setdefault("WAVESPIKE_DATA_ROOT", os.path.join(tempfile.gettempdir(), "wavespike_data"))
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "biometrics"))
-import bio_run                                                     # noqa: E402  (shared project code)
+sys.path.insert(0, HERE)                                           # bio_run.py and spiking_wavelets.py sit next to this file
+import bio_run                                                     # noqa: E402
 from spiking_wavelets import make_paper_frontends, make_token_nets  # noqa: E402
 
 

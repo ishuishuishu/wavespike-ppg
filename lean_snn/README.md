@@ -17,10 +17,10 @@ Each step links to its section. Tick them off as you go.
 2. [ ] Download and prepare Seeing Red; check it says **14 users** (§4.2).
 3. [ ] Download and prepare Zenodo; check it says **17 subjects** (§4.3).
 4. [ ] Run both smoke tests; check there's no `Traceback` (§4.4).
-5. [ ] Run Task A: `bash lean_snn/run_task_a.sh` (§5).
-6. [ ] Run Task B: `bash lean_snn/run_task_b.sh` (§6).
-7. [ ] Print the results: `bash lean_snn/check_results.sh` (§8).
-8. [ ] Check the models: `bash lean_snn/check_models.sh`, with 9 × `runs OK` (§9).
+5. [ ] Run Task A: `bash run_task_a.sh` (§5).
+6. [ ] Run Task B: `bash run_task_b.sh` (§6).
+7. [ ] Print the results: `bash check_results.sh` (§8).
+8. [ ] Check the models: `bash check_models.sh`, with 9 × `runs OK` (§9).
 9. [ ] Send back everything in the Deliverables table (§9).
 
 Task A and Task B are independent; run them one after the other, not at the same time.
@@ -33,9 +33,9 @@ Task A and Task B are independent; run them one after the other, not at the same
 | 2 | Task B result files `x_aug_lean_tau_amp_f{0,1,2}_ts{0,1}.json` | `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/` | 6 |
 | 3 | Task A trained models `bio_seeing_red_luma_w10_trs0.5__x_lean_tau_amp_f{0,1,2}_ts1.pt` | `$WAVESPIKE_DATA_ROOT/models/lean_snn/` | 3 |
 | 4 | Task B trained models `bio_zenodo_bio_w10__x_aug_lean_tau_amp_f{0,1,2}_ts{0,1}.pt` | `$WAVESPIKE_DATA_ROOT/models/lean_snn/` | 6 |
-| 5 | Model check: output of `bash lean_snn/check_models.sh` (every model must print `runs OK`) | your terminal | 1 |
-| 6 | Logs `task_a.log`, `task_b.log` | `lean_snn/logs/` | 2 |
-| 7 | Results summary: output of `bash lean_snn/check_results.sh` | your terminal | 1 |
+| 5 | Model check: output of `bash check_models.sh` (every model must print `runs OK`) | your terminal | 1 |
+| 6 | Logs `task_a.log`, `task_b.log` | `logs/` | 2 |
+| 7 | Results summary: output of `bash check_results.sh` | your terminal | 1 |
 | 8 | Git commit hash you ran, plus Python, PyTorch and NumPy versions | see section 9 | 1 |
 | 9 | Notes on anything unexpected (tracebacks, wrong person counts, odd numbers) | a short message | – |
 
@@ -50,9 +50,15 @@ Files in this folder:
 | `run_task_b.sh` | Runs Task B and saves its models |
 | `check_results.sh` | Prints the summary tables for both tasks |
 | `check_models.sh` | Reloads every saved model and runs it once |
-| `load_model.py` | Rebuilds one saved model and runs it (used by `check_models.sh`; the starting point for the Pi) |
+| `requirements.txt` | Python package versions used for the original runs |
+| `code/bio_run.py` | Training, evaluation and summaries (the run scripts call it) |
+| `code/cells/` | The model and training code that `bio_run.py` runs |
+| `code/prepare_seeing_red.py`, `code/prepare_zenodo.py` | Turn the downloaded data into PPG windows |
+| `code/load_model.py` | Rebuilds one saved model and runs it (used by `check_models.sh`; the starting point for the Pi) |
+| `code/spiking_wavelets.py` | Imported by `bio_run.py`; not used by the lean SNN itself |
+| `code/SOURCE.md` | Where each code file was copied from |
 
-The scripts call the shared project code (`biometrics/bio_run.py` and `notebook/cells/`), so keep this folder inside the repository and run the scripts from anywhere in it.
+**This folder is self-contained.** Everything needed is inside it, so it runs on its own: you can copy just this folder to your server. Don't edit anything in `code/`. Run every command in this guide **from inside this folder** (`cd lean_snn`).
 
 ---
 
@@ -74,7 +80,7 @@ It **does** use wavelets. The rest is identical to the main SNN:
 - per-neuron time constants (`tau_het`);
 - amplitude features fused into the readout (`amp_fusion`).
 
-The two variants, defined in `biometrics/bio_run.py`:
+The two variants, defined in `code/bio_run.py`:
 
 | Name | Settings |
 |---|---|
@@ -107,12 +113,12 @@ The option changes nothing else: training, results and result files are exactly 
 To check a model rebuilds and runs:
 
 ```bash
-python -I lean_snn/load_model.py $WAVESPIKE_DATA_ROOT/models/lean_snn/<file>.pt
+python -I code/load_model.py $WAVESPIKE_DATA_ROOT/models/lean_snn/<file>.pt
 ```
 
-It prints the variant, fold, seed, parameter count and `runs OK`. `bash lean_snn/check_models.sh` does this for every saved model.
+It prints the variant, fold, seed, parameter count and `runs OK`. `bash check_models.sh` does this for every saved model.
 
-**For the Pi (later, not part of this handoff).** `load_model.py` needs PyTorch, which runs on a 64-bit Raspberry Pi OS. The NumPy-only Pi exporter in the notebook doesn't yet handle the amplitude-feature term these models use; extending it is a separate task.
+**For the Pi (later, not part of this handoff).** `load_model.py` needs PyTorch, which runs on a 64-bit Raspberry Pi OS. The NumPy-only Pi exporter in the main project (not in this folder) doesn't yet handle the amplitude-feature term these models use; extending it is a separate task.
 
 ## 3. How the tests work (so your numbers are comparable)
 
@@ -139,31 +145,35 @@ It prints the variant, fold, seed, parameter count and `runs OK`. `bash lean_snn
 
 ### 4.1 Code and Python
 
-1. Clone the repository and check out the latest `main`:
+1. Get this folder. Either clone the repository and go into it:
 
    ```bash
    git clone https://github.com/ishuishuishu/wavespike-ppg.git
-   cd wavespike-ppg
+   cd wavespike-ppg/lean_snn
    git log --oneline -1        # note this hash; you'll send it back
    ```
 
-2. Create a Python 3.13 (or newer) environment with CPU PyTorch and the packages below. A GPU isn't needed or used.
+   or copy just the `lean_snn` folder to your server and `cd` into it. In that case, send back the name of the file or zip you received instead of a commit hash.
+
+2. Create a Python 3.13 (or newer) environment with CPU PyTorch and the packages in `requirements.txt`. A GPU isn't needed or used. The original runs used Python 3.14 and PyTorch 2.15.
 
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
    pip install torch --index-url https://download.pytorch.org/whl/cpu
-   pip install numpy scipy scikit-learn pandas h5py PyWavelets opencv-python-headless
+   pip install -r requirements.txt
    ```
 
-3. Make a data folder **outside** the repository and point `WAVESPIKE_DATA_ROOT` at it:
+   If an exact version in `requirements.txt` isn't available for your Python, install the nearest one and note it in your report.
+
+3. Make a data folder **outside** this folder and point `WAVESPIKE_DATA_ROOT` at it:
 
    ```bash
    mkdir -p ~/wavespike_data/raw ~/wavespike_data/processed
    export WAVESPIKE_DATA_ROOT=~/wavespike_data
    ```
 
-**In every new shell**, before running anything, go to the repository folder and run these two lines again (or add them to your `~/.bashrc`):
+**In every new shell**, before running anything, `cd` into the `lean_snn` folder and run these two lines again (or add them to your `~/.bashrc`):
 
 ```bash
 source .venv/bin/activate
@@ -186,7 +196,7 @@ Download the data on the server itself.
 
    ```bash
    mkdir -p $WAVESPIKE_DATA_ROOT/raw/seeing_red
-   python -I biometrics/prepare_seeing_red.py ~/seeing_red/videos $WAVESPIKE_DATA_ROOT/raw/seeing_red/sr_rgb50.npz 12
+   python -I code/prepare_seeing_red.py ~/seeing_red/videos $WAVESPIKE_DATA_ROOT/raw/seeing_red/sr_rgb50.npz 12
    ```
 
    The last number is the number of parallel workers. Check the printed line: it must say **14 users**.
@@ -200,7 +210,7 @@ Download the data on the server itself.
 2. Build the identity windows (10 s, up to 60 per day, quality-gated, 100 → 50 Hz):
 
    ```bash
-   python -I biometrics/prepare_zenodo.py $WAVESPIKE_DATA_ROOT
+   python -I code/prepare_zenodo.py $WAVESPIKE_DATA_ROOT
    ```
 
    It prints one line per subject and ends with `saved .../processed/zenodo_bio_50hz_10s.npz: ... windows, 17 subjects`. It must say **17 subjects**.
@@ -208,8 +218,8 @@ Download the data on the server itself.
 ### 4.4 Smoke test (2 minutes; writes no result files)
 
 ```bash
-BIO_CHANNEL=luma python -I biometrics/bio_run.py --dataset seeing_red --variants x_lean_tau_amp --folds 0 --seeds 1 --train-stride 0.5 --smoke
-python -I biometrics/bio_run.py --dataset zenodo_bio --variants x_aug_lean_tau_amp --folds 0 --seeds 0 --smoke
+BIO_CHANNEL=luma python -I code/bio_run.py --dataset seeing_red --variants x_lean_tau_amp --folds 0 --seeds 1 --train-stride 0.5 --smoke
+python -I code/bio_run.py --dataset zenodo_bio --variants x_aug_lean_tau_amp --folds 0 --seeds 0 --smoke
 ```
 
 Each must print a line with `identities 14` (Seeing Red) or `identities 17` (Zenodo) and finish without a `Traceback`.
@@ -232,13 +242,13 @@ Each must print a line with `identities 14` (Seeing Red) or `identities 17` (Zen
 Run:
 
 ```bash
-bash lean_snn/run_task_a.sh            # optional: a thread count, e.g. bash lean_snn/run_task_a.sh 8
+bash run_task_a.sh            # optional: a thread count, e.g. bash run_task_a.sh 8
 ```
 
 That is exactly:
 
 ```bash
-BIO_CHANNEL=luma python -I biometrics/bio_run.py --dataset seeing_red --variants x_lean_tau_amp \
+BIO_CHANNEL=luma python -I code/bio_run.py --dataset seeing_red --variants x_lean_tau_amp \
     --folds 0,1,2 --seeds 1 --train-stride 0.5 --threads 12 \
     --save-model $WAVESPIKE_DATA_ROOT/models/lean_snn
 ```
@@ -246,7 +256,7 @@ BIO_CHANNEL=luma python -I biometrics/bio_run.py --dataset seeing_red --variants
 **Output.**
 - Three result files in `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/`: `x_lean_tau_amp_f0_ts1.json`, `x_lean_tau_amp_f1_ts1.json`, `x_lean_tau_amp_f2_ts1.json`.
 - Three model files in `$WAVESPIKE_DATA_ROOT/models/lean_snn/`: `bio_seeing_red_luma_w10_trs0.5__x_lean_tau_amp_f{0,1,2}_ts1.pt`. Each run prints `saved model ...` when its file is written.
-- The console log goes to `lean_snn/logs/task_a.log`.
+- The console log goes to `logs/task_a.log`.
 
 **What to expect.** On the original machine, seed 0 (last epoch, 5 windows, mean of 3 runs) gave **EER 25.4%** (range 20.0–30.4%) and top-1 37.6%. Seed 1 should land in a similar range, but not identical: the seed differs, and the thread count changes results slightly.
 
@@ -266,13 +276,13 @@ BIO_CHANNEL=luma python -I biometrics/bio_run.py --dataset seeing_red --variants
 Run:
 
 ```bash
-bash lean_snn/run_task_b.sh            # optional thread count, as above
+bash run_task_b.sh            # optional thread count, as above
 ```
 
 That is exactly:
 
 ```bash
-python -I biometrics/bio_run.py --dataset zenodo_bio --variants x_aug_lean_tau_amp \
+python -I code/bio_run.py --dataset zenodo_bio --variants x_aug_lean_tau_amp \
     --folds 0,1,2 --seeds 0,1 --threads 12 \
     --save-model $WAVESPIKE_DATA_ROOT/models/lean_snn
 ```
@@ -280,7 +290,7 @@ python -I biometrics/bio_run.py --dataset zenodo_bio --variants x_aug_lean_tau_a
 **Output.**
 - Six result files `x_aug_lean_tau_amp_f{0,1,2}_ts{0,1}.json` in `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/`.
 - Six model files `bio_zenodo_bio_w10__x_aug_lean_tau_amp_f{0,1,2}_ts{0,1}.pt` in `$WAVESPIKE_DATA_ROOT/models/lean_snn/`.
-- The log goes to `lean_snn/logs/task_b.log`.
+- The log goes to `logs/task_b.log`.
 
 **What to expect.** Our runs on Zenodo for the nearby models (last epoch, 5 windows, mean of 6 runs):
 
@@ -303,7 +313,7 @@ Task B is a new model/dataset pair, so there is no "correct" number. A mean EER 
 ## 8. Check the results
 
 ```bash
-bash lean_snn/check_results.sh
+bash check_results.sh
 ```
 
 This prints the summary tables:
@@ -317,7 +327,7 @@ Read the rows where `n = 5`, the "EER% b/l" column, after the slash (last epoch)
 1. Check every saved model rebuilds and runs:
 
    ```bash
-   bash lean_snn/check_models.sh
+   bash check_models.sh
    ```
 
    It must list 9 models, each ending in `runs OK`. The predicted identity it prints is for a synthetic pulse, so it means nothing; only `runs OK` matters.
@@ -328,7 +338,7 @@ Read the rows where `n = 5`, the "EER% b/l" column, after the slash (last epoch)
    python -c "import sys, torch, numpy; print(sys.version, torch.__version__, numpy.__version__)"
    ```
 
-3. Send everything in the **Deliverables** table at the top of this guide, unchanged. A zip of `results/bio_seeing_red_luma_w10_trs0.5/x_lean_tau_amp_*_ts1.json`, `results/bio_zenodo_bio_w10/x_aug_lean_tau_amp_*.json`, `models/lean_snn/` and `lean_snn/logs/` plus the two printouts covers it.
+3. Send everything in the **Deliverables** table at the top of this guide, unchanged. A zip of `results/bio_seeing_red_luma_w10_trs0.5/x_lean_tau_amp_*_ts1.json`, `results/bio_zenodo_bio_w10/x_aug_lean_tau_amp_*.json`, `models/lean_snn/` and `logs/` plus the two printouts covers it.
 
 Report anything unexpected:
 - a `Traceback` or warning;
