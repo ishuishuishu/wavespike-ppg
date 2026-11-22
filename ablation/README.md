@@ -149,20 +149,6 @@ These are interim readings. Don't quote them as conclusions until the table is c
 
 `run_missing.sh` runs these four jobs in this order. Any job can be run on its own (§6).
 
-### What happened on our machine (so you know what to avoid)
-
-Jobs 2–4 were started on our workstation but are **paused partway**, with no result files saved for them:
-- Job 4 (Zenodo, fixed, aug) was the second of three variants in the Zenodo fill job. Its first variant, Zenodo partly learnable without aug, finished: that's the 16.6% cell above.
-- Job 2 (Seeing Red, partly learnable) was the second variant in the Seeing Red fill job. Its first variant, Seeing Red no wavelet with aug, finished: that's the 24.9% cell.
-
-Problems we ran into, and what we changed:
-1. **CPU overload made runs very slow.** We ran about 10 jobs in parallel on a 24-thread CPU. The fill runs then took **35 to 350 minutes each** (median about 100), against about 13 minutes for the same kind of run on a less busy machine. Some jobs nearly stalled from thread contention (many processes each using several threads). **Run one job at a time.**
-2. **Overheating.** With every core busy for hours, the workstation overheated and all jobs had to be paused, then resumed one at a time. **Don't run several jobs at once to save time; it's slower overall and risks the machine.**
-3. **CPU priority.** The jobs ran at lowered priority (`nice`) so other work could go first, which made them even slower. A normal user can lower a priority but not raise it back. Start jobs at normal priority.
-4. **The paused runs can't be moved to your server.** A paused process lives only in our machine's memory, so you start these jobs from scratch. Each run is short enough that this costs nothing important, and it's why the 21 runs are given to you as fresh jobs.
-
-To avoid duplicates, our paused jobs won't be resumed once you start.
-
 ### Other gaps in this part of the project (not part of your job)
 
 These are listed so the picture is complete. Don't start them unless the project lead asks.
