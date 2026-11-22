@@ -76,7 +76,7 @@ EER %, 5 windows, 6 repeats. Only the wavelet changes within a column.
 - **Their exact networks** (`biometrics/paper_models.py`, running):
   - Ibrahim et al. 2024 CVT-ConvMixer (22.5M parameters) on RW-PPG, one of their own three datasets. RW-PPG has been downloaded (Mendeley 10.17632/yynb8t9x3d, CERN OHL licence). Screen `pmA`, 5 folds; about 2 min per epoch while the CPU is shared.
   - Rahman & Banavar 2025 CVT-ConvMixer-LSTM on BIDMC, and on Seeing Red decimated to 14 Hz (screen `pmB`).
-  - At the user's request, Ibrahim on RW-PPG is cut to **1 fold** (of 5) to free the CPU. `stop_ibrahim.sh` stops it once fold 0 prints its result. The result is saved to `results/paper_models/ibrahim_rwppg_fold0.txt`; no JSON is written, because the script saves only at the end.
+  - Ibrahim on RW-PPG runs all 5 folds. The user first chose 1 fold, then changed this to all 5, run after the other jobs. It now runs at the lowest CPU priority (`nice` 19), so it uses only spare CPU; the other jobs take priority.
   - CFISHR is on IEEE DataPort under a signed licence (EULA), so it is not open access and is not used.
   - Ibrahim on BIDMC/MIMIC would take about 45 h each on our CPU and has not been started.
 
