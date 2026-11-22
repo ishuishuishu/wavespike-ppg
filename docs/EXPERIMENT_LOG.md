@@ -54,10 +54,12 @@ EER %, 5 windows, 6 repeats. Only the wavelet changes within a column.
 
 | Front end | Zenodo, no aug | Zenodo, aug | Seeing Red, no aug | Seeing Red, aug |
 |---|---|---|---|---|
-| None | 20.2 | running | 29.5 | running |
-| Fixed db4 | 16.1 | running | 24.7 | 23.8 |
-| Partly learnable (one shared filter) | running | 16.1 | running | 23.9 |
+| None | 20.2 | missing | 29.5 | 24.9 |
+| Fixed db4 | 16.1 | missing | 24.7 | 23.8 |
+| Partly learnable (one shared filter) | 16.6 | 16.1 | missing | 23.9 |
 | Fully learnable (filter per level) | 15.6 | 16.0 | 28.7 (3 of 6 runs) | 24.3 |
+
+- Updated day 1 evening: the fills finished Zenodo partly learnable (no aug) and Seeing Red no wavelet (aug). The remaining 21 runs (Seeing Red fully learnable seed 1; Seeing Red partly learnable; Zenodo no wavelet and fixed db4 with aug) are handed off in `ablation/`, with every run so far in `ablation/ablation_runs_so_far.csv`. The paused fill jobs (`wA`, `wB`) are not to be resumed once the handoff starts.
 
 - The earlier page compared rows with and without augmentation; this table fixes that.
 - New variants added to fill the gaps: `x_shared_tau_amp`, `x_aug_raw_tau_amp`.

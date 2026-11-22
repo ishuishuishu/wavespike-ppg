@@ -13,6 +13,7 @@ A small spiking neural network (SNN) with a learnable wavelet front end for phot
 | `edge/` | `rpi_infer.py` (NumPy-only inference) and `pi_bench.py` (Raspberry Pi latency, memory and energy benchmark), `energy_estimate.py` (hardware-free energy estimates from operation counts) |
 | `docs/` | Team handoff and the full results page |
 | `lean_snn/` | Handoff for the remaining lean SNN runs: step-by-step guide and run scripts |
+| `ablation/` | Wavelet-ablation handoff: results so far, the missing runs, code and run scripts |
 | `paper_designs/` | Self-contained folder to run our PPG versions of the P2–P5 spiking-wavelet designs: code, guide and run scripts |
 | `archive/` | Other analysis scripts used during development; see `archive/README.md` |
 | `manuscript/` | Manuscript drafts (Word) |
