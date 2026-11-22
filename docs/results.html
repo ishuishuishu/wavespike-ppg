@@ -93,7 +93,7 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:70ch}
 <header style="display:grid;gap:10px">
   <div class="eyebrow">WaveSpike-PPG · biometric identification and arrhythmia detection from pulse</div>
   <h1>WaveSpike PPG Results</h1>
-  <p class="lede">How our spiking network (SNN) with a wavelet front end compares with paper-style methods we built ourselves (none is a paper's released code; see "Whose model is each one?"). Part 1 is person identification on two open PPG datasets, the current focus. Every number there is the average over 3 data splits × 2 random seeds, tested on sessions the model never saw. Part 2 is arrhythmia (AF) detection, the original goal.</p>
+  <p class="lede">How our spiking network (SNN) with a wavelet front end compares with paper-style methods we built ourselves (none is a paper's released code; see "Whose model is each one?"). Part 1 is person identification on two open PPG datasets, the current focus. Every number there is the average over 3 data splits × 2 random seeds, tested on sessions the model never saw. The project began with arrhythmia (AF) detection; that part is left out of the paper and no longer shown here.</p>
 </header>
 
 <section>
@@ -103,8 +103,10 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:70ch}
     <li><span class="chip loss">Loss</span><div><b>Our own CWT-CNN</b> (a wavelet-image CNN we designed in the style of published CWT-CNN papers, not any paper's exact network) is more accurate on both datasets: 14.0% vs 15.6% error across days. It is about <b>4× bigger</b> and needs roughly <b>5× more compute</b> (estimate).</div></li>
     <li><span class="chip mid">Mixed</span><div>On <b>Seeing Red</b> (phone camera, 14 people), our beat-feature SVM (built in the style of that dataset's paper) is still the most accurate single model (19.6%). Our best SNN gets 21.8%.</div></li>
     <li><span class="chip mid">Mixed</span><div>A <b>wavelet front end helps</b> a lot (about 4–6 points less error than no wavelet). Making the wavelet <b>learnable does not</b> add accuracy: when only the wavelet changes, fixed, partly learnable and fully learnable score within about 0.5 points.</div></li>
-    <li><span class="chip loss">Loss</span><div><b>Arrhythmia (AF) detection</b>, the original goal: a simple 3-feature heartbeat-interval baseline scored <b>0.92 AUROC</b>, against <b>0.67</b> for our SNN. On wrist data, every method including the baseline was at chance (about 0.5). That is why the project switched to biometrics.</div></li>
+    <li><span class="chip mid">Tie</span><div><b>Published spiking-wavelet designs, rebuilt for PPG</b> (P6, P7; see "Published wavelet designs"): the best one, P7's DWT-C, <b>ties</b> our SNN across days (15.6% vs 15.6%, 3 of 6 repeats each). None beats our SNN in every repeat; our SNN beats P6 sym4 in 6 of 6. Most designs are still running.</div></li>
+    <li><span class="chip win">Cost</span><div>Our SNN has about <b>6,200 parameters</b>, a quarter of the CWT-CNN's. Estimated energy per 10 s window: <b>14.3 µJ</b> run densely on a CPU (CNN: 54.0 µJ), and <b>0.75 µJ</b> on hardware that only works when a spike fires (estimates from operation counts, not yet measured).</div></li>
   </ul>
+  <div class="note"><b>Where our SNN beats the others, in one line:</b> across days on wrist PPG it beats every same-size or classical rival in every repeat, at about a quarter of the CNN's size and energy. It does <b>not</b> beat the CWT-CNN on accuracy, and it does not beat the classical SVM on the phone-camera data. See "Where our SNN wins" below for the exact comparisons.</div>
 </section>
 
 <section>
@@ -191,6 +193,30 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:70ch}
   <p class="small muted">On Seeing Red, our SNN loses to the CWT-CNN in 6/6 repeats and does not beat the beat-feature SVM.</p>
 </section>
 
+<section id="where-we-win">
+  <h2>Where our SNN wins (and where it doesn't)</h2>
+  <p class="muted">Our SNN with a fully learnable wavelet (<code>x_tau_amp</code>) against every rival, repeat by repeat: same split, same seed, EER with 5 windows, last epoch. "Wins" = repeats where our SNN had the lower error. The difference is our SNN's EER minus the rival's (negative = ours is better).</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Our SNN vs</th><th class="r">Zenodo across days: wins</th><th class="r">Difference</th><th class="r">Seeing Red across sittings: wins</th><th class="r">Difference</th></tr></thead>
+    <tbody>
+      <tr><td>Our SNN without wavelet<span class="tag twin">our control</span></td><td class="r"><span class="score win">6/6</span></td><td class="r num">−4.6</td><td class="r"><span class="score mid">2/3</span></td><td class="r num">−0.2</td></tr>
+      <tr><td>Our same-size GRU<span class="tag twin">our control</span></td><td class="r"><span class="score win">6/6</span></td><td class="r num">−2.7</td><td class="r"><span class="score loss">1/3</span></td><td class="r num">+2.2</td></tr>
+      <tr><td>Beat features + SVM<span class="tag pub">ours, paper-style</span></td><td class="r"><span class="score win">6/6</span></td><td class="r num">−4.3</td><td class="r"><span class="score loss">0/3</span></td><td class="r num">+9.2</td></tr>
+      <tr><td>P6 rebuilt, fixed sym4 wavelet<span class="tag pub">paper rebuild</span></td><td class="r"><span class="score win">6/6</span></td><td class="r num">−0.9</td><td class="r"><span class="score loss">1/3</span></td><td class="r num">+2.3</td></tr>
+      <tr><td>Our SNN, fixed Daubechies-4<span class="tag ours">ours</span></td><td class="r"><span class="score mid">5/6</span></td><td class="r num">−0.5</td><td class="r"><span class="score loss">0/3</span></td><td class="r num">+4.3</td></tr>
+      <tr><td>P6 rebuilt, fixed coif1 wavelet<span class="tag pub">paper rebuild</span></td><td class="r"><span class="score mid">4/6</span></td><td class="r num">−0.6</td><td class="r"><span class="score loss">1/3</span></td><td class="r num">+2.5</td></tr>
+      <tr><td>P7 rebuilt, DWT-C<span class="tag pub">paper rebuild</span></td><td class="r"><span class="score mid">3/6</span></td><td class="r num">0.0</td><td class="r"><span class="score loss">1/3</span></td><td class="r num">+3.0</td></tr>
+      <tr><td>Our CWT-CNN<span class="tag pub">ours, paper-style</span></td><td class="r"><span class="score loss">1/6</span></td><td class="r num">+1.6</td><td class="r"><span class="score loss">0/3</span></td><td class="r num">+8.7</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="takeaways">
+    <li><span class="chip win">Wins</span><div><b>Across days on wrist PPG</b>, our SNN beats the SNN without wavelet, the same-size GRU, the classical beat-feature SVM and the P6 sym4 rebuild <b>in every repeat</b>. These are the claims that pass our all-repeats rule. (Against the SVM this holds with 5 windows; with 1 window it wins 4 of 6.)</div></li>
+    <li><span class="chip mid">Ties</span><div>Against fixed wavelets (our Daubechies-4, P6 coif1) and P7's DWT-C, our SNN is within about 1 point and wins only some repeats. Learning the wavelet is <b>not yet shown</b> to beat a good fixed wavelet.</div></li>
+    <li><span class="chip loss">Losses</span><div>The CWT-CNN is more accurate on both datasets. On Seeing Red, the beat-feature SVM is more accurate. On Seeing Red, our non-augmented SNN has only 3 of 6 repeats, so those comparisons are out of 3; that test also varies a lot between repeats (15–39% EER).</div></li>
+    <li><span class="chip win">Cost</span><div>What our SNN offers in return is size and energy: about 6,200 parameters against the CNN's 24,700, and an estimated 14.3 µJ per window dense (CNN 54.0 µJ), or 0.75 µJ event-driven.</div></li>
+  </ul>
+</section>
+
 <section id="same-recipe">
   <h2>Was the CNN comparison fair? Training the CNN with our SNN's recipe makes it worse</h2>
   <p class="muted">Our CWT-CNN was trained with a shorter recipe (60 epochs, no augmentation) than our SNN (150 epochs of 1,600 balanced windows, augmentation, learning rate 2e-3, gradient clipping). To check that the SNN was not handicapped, we retrained the same CNN with exactly the SNN's recipe (<code>cwt_cnn_x_amp</code>). EER %, lower is better; top-1 accuracy in brackets; 6 repeats each.</p>
@@ -221,48 +247,36 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:70ch}
   <div class="scroll"><table>
     <thead><tr><th>Wavelet front end</th><th class="r">Zenodo across days<br>no augmentation</th><th class="r">Zenodo across days<br>with augmentation</th><th class="r">Seeing Red across sittings<br>no augmentation</th><th class="r">Seeing Red across sittings<br>with augmentation</th></tr></thead>
     <tbody>
-      <tr><td>None (raw pulse)</td><td class="r num">20.2</td><td class="r">running</td><td class="r num">29.5</td><td class="r">running</td></tr>
-      <tr><td>Fixed (Daubechies-4)</td><td class="r num">16.1</td><td class="r">running</td><td class="r num">24.7</td><td class="r num">23.8</td></tr>
-      <tr><td>Partly learnable (one shared filter)</td><td class="r">running</td><td class="r num">16.1</td><td class="r">running</td><td class="r num">23.9</td></tr>
+      <tr><td>None (raw pulse)</td><td class="r num">20.2</td><td class="r">to run</td><td class="r num">29.5</td><td class="r num">24.9</td></tr>
+      <tr><td>Fixed (Daubechies-4)</td><td class="r num">16.1</td><td class="r">to run</td><td class="r num">24.7</td><td class="r num">23.8</td></tr>
+      <tr><td>Partly learnable (one shared filter)</td><td class="r num">16.6</td><td class="r num">16.1</td><td class="r">to run</td><td class="r num">23.9</td></tr>
       <tr><td>Fully learnable (one filter per level)</td><td class="r num">15.6</td><td class="r num">16.0</td><td class="r num">28.7 (3 of 6 runs)</td><td class="r num">24.3</td></tr>
     </tbody>
   </table></div>
-  <p class="small muted">Code names, no augmentation: <code>x_raw_tau_amp</code>, <code>x_fixed_tau_amp</code>, <code>x_shared_tau_amp</code>, <code>x_tau_amp</code>; with augmentation, the same with <code>x_aug_</code> in front. Cells marked "running" were missing and are now being trained so every comparison is like for like. Only one partly learnable design has been tested so far; more are planned.</p>
+  <p class="small muted">Code names, no augmentation: <code>x_raw_tau_amp</code>, <code>x_fixed_tau_amp</code>, <code>x_shared_tau_amp</code>, <code>x_tau_amp</code>; with augmentation, the same with <code>x_aug_</code> in front. Cells marked "to run" (21 runs in all, plus the 3 missing repeats of the fully learnable SNN on Seeing Red) are scheduled so every comparison is like for like. Paired, repeat by repeat, against the fully learnable wavelet: no wavelet loses in 6 of 6 on Zenodo; every other comparison is mixed so far (2–5 of 6), so learning the wavelet is not yet shown to help over a fixed one.</p>
 </section>
-
-<section>
-  <div class="eyebrow">Part 2 · the original goal · atrial fibrillation (AF) detection from PPG</div>
-  <h2>Arrhythmia detection: a simple baseline beat every neural model</h2>
-  <div class="howto">
-    <div><h3>AUROC, higher is better</h3><p class="small muted">How well AF and normal-rhythm windows are told apart. 1.0 is perfect, 0.5 is guessing (the dashed line).</p></div>
-    <div><h3>New patients only</h3><p class="small muted">30 s windows. 5-fold cross-validation split by patient, so test patients are never seen in training.</p></div>
-    <div><h3>Two checkpoints</h3><p class="small muted">Bar = last training epoch. The grey number after the dot is the best-on-validation epoch.</p></div>
-  </div>
-  <h3>MIMIC PERform AF · 35 patients · hospital finger PPG · 6 repeats (3 fold seeds × 2 training seeds)</h3>
-  <div class="chart" id="chartAF1"></div>
+<section id="paper-designs">
+  <h2>Published wavelet designs, rebuilt for PPG</h2>
+  <p class="muted">Seven published spiking-wavelet papers (P1–P7) were designed for other signals (ECG, EEG, images, MNIST). We rebuilt each paper's <b>wavelet design</b> for 1-D PPG and ran it in our pipeline: same data, splits, seeds, training recipe and spiking core, so only the wavelet part changes. These are our runs of designs rebuilt from the papers' text, not the papers' own results. EER %, 5 windows, last epoch, mean of 6 repeats unless noted.</p>
   <div class="scroll"><table>
-    <thead><tr><th>Compared with our SNN (<code>full</code>)</th><th>Holds in every one of 6 repeats?</th></tr></thead>
+    <thead><tr><th>Design</th><th>Paper</th><th class="r">Zenodo across days</th><th class="r">Seeing Red across sittings</th></tr></thead>
     <tbody>
-      <tr><td>Interval baseline (<code>irreg_lr</code>)</td><td><span class="score win">Better in 6/6</span> (both checkpoints)</td></tr>
-      <tr><td>SNN without wavelet (<code>snn_raw</code>)</td><td><span class="score win">Better in 6/6</span> at the last checkpoint, not at the best one</td></tr>
-      <tr><td>Same-size GRU (<code>gru_twin</code>)</td><td><span class="score loss">Worse in 6/6</span></td></tr>
-      <tr><td>All other variants</td><td>No consistent difference</td></tr>
+      <tr><td>Our SNN, fully learnable wavelet (reference)<span class="tag ours">ours</span></td><td>–</td><td class="r num">15.6</td><td class="r num">28.7 (3 of 6)</td></tr>
+      <tr><td>Our SNN, fixed Daubechies-4 (reference)<span class="tag ours">ours</span></td><td>–</td><td class="r num">16.1</td><td class="r num">24.7</td></tr>
+      <tr><td>P7 DWT-C: three Haar-family bases with learnable weights<span class="tag pub">paper rebuild</span></td><td>Wang et al. 2024 (FWformer)</td><td class="r num">15.6</td><td class="r num">25.7</td></tr>
+      <tr><td>P6, fixed coif1<span class="tag pub">paper rebuild</span></td><td>Aghabarar et al. 2023</td><td class="r num">16.2</td><td class="r num">26.1</td></tr>
+      <tr><td>P6, fixed sym4<span class="tag pub">paper rebuild</span></td><td>Aghabarar et al. 2023</td><td class="r num">16.5</td><td class="r num">26.0</td></tr>
+      <tr><td>P6, fixed haar / db2 / db8<span class="tag pub">paper rebuild</span></td><td>Aghabarar et al. 2023</td><td class="r">running (1 of 6 each)</td><td class="r">running (2 of 6 each)</td></tr>
+      <tr><td>P7, our extension: db4 + sym4 + coif1 mixed<span class="tag ours">ours, extension</span></td><td>after Wang et al. 2024</td><td class="r">running (3 of 6: 17.6)</td><td class="r">running (3 of 6: 27.0)</td></tr>
+      <tr><td>P1 DoE filters, and P1 variants<span class="tag pub">paper rebuild</span></td><td>Pedersen et al. 2026</td><td class="r">running</td><td class="r">running</td></tr>
+      <tr><td>P2, P3, P4, P5 and the spiking-attention baseline<span class="tag pub">paper rebuild</span></td><td>see the <code>paper_designs</code> folder</td><td class="r">to run</td><td class="r">to run</td></tr>
     </tbody>
   </table></div>
-  <h3>Extra variants tried on one development repeat (fold seed 0, training seed 0)</h3>
-  <div class="chart" id="chartAF2"></div>
-  <p class="small muted">These were chosen on the same 35 patients they were scored on, so they are optimistic and never confirmed. On the same repeat, the original <code>full</code> scored 0.633 and the baseline 0.918. The best combination, <code>tau_aug_slow</code> (0.81), used spread neuron time constants, time-warp augmentation and 40 epochs without early stopping.</p>
-  <h3>Zenodo wrist AF · 19 patients · AF and normal rhythm in the same person · 1 repeat</h3>
-  <div class="chart" id="chartAF3"></div>
-  <div class="note"><b>Why the AF work stopped.</b> In MIMIC PERform every window inherits its recording's AF label, so a model can score well by recognising the patient instead of the rhythm. The wrist dataset removes that shortcut, because the same person has both AF and normal stretches. There, every method, including the 0.92 baseline, fell to chance. Either 50 Hz wrist PPG is too noisy for heartbeat-interval features, or the AF labels are misaligned with the PPG windows. The label alignment was never checked.</div>
-  <div class="scroll"><table>
-    <thead><tr><th>CinC 2015 false-alarm task (sanity check, not AF)</th><th class="r">AUROC</th></tr></thead>
-    <tbody>
-      <tr><td>Our SNN (<code>full</code>)</td><td class="r num">0.672</td></tr>
-      <tr><td>Interval baseline (<code>irreg_lr</code>)</td><td class="r num">0.671</td></tr>
-    </tbody>
-  </table></div>
-  <p class="small muted">CinC 2015: 383 alarm windows (tachycardia and ventricular tachycardia with a PPG channel), 1 repeat. Published AF-from-PPG papers (DeepBeat and others) were not compared, because their figures were not verified and most use easier splits.</p>
+  <ul class="takeaways">
+    <li><span class="chip mid">Tie</span><div>Across days, P7's DWT-C ties our SNN (15.6% vs 15.6%; ours wins 3 of 6 repeats). P7's three bases (Bior1.1, Haar, Db1) are the same Haar filter, so DWT-C is in effect one learnable gain on a Haar wavelet.</div></li>
+    <li><span class="chip win">Win</span><div>Our SNN beats P6 sym4 in 6 of 6 repeats across days (by 0.9 points on average), and P6 coif1 in 4 of 6.</div></li>
+    <li><span class="chip loss">Note</span><div>On Seeing Red, the fixed and P6/P7 front ends average 24.7–26.1%, against 28.7% for our non-augmented SNN, which still has only 3 of 6 repeats. That cell is being completed.</div></li>
+  </ul>
 </section>
 
 <section>
@@ -278,7 +292,20 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:70ch}
     </tbody>
   </table></div>
   <p class="small muted">Operation counts are rough estimates of dense multiply-adds, not measurements. *On spiking hardware, the SNN only does work when a spike fires, so its real cost would be lower. The Raspberry Pi benchmark will replace these with measured energy and latency.</p>
-  <div class="note"><b>Hardware-free energy estimates: running.</b> <code>edge/energy_estimate.py</code> counts, per 10 s window, each model's parameters, dense multiply-adds, spike-driven additions (SynOps, measured spike rates) and neuron updates. It then applies four published energy models: 45 nm fp32 and int8 operation costs (Horowitz, ISSCC 2014, Fig. 1.1.9: 4.6 pJ per fp32 multiply-add, 0.9 pJ per add); the same plus SRAM weight reads (5 pJ per 32-bit weight); and Loihi neuromorphic costs (Davies et al., IEEE Micro 2018: 23.6 pJ per synaptic spike operation, 81/52 pJ per active/inactive neuron update). The SNN is scored both dense (as a CPU runs it today) and event-driven (only spikes do work). Results are saved to <code>results/energy_estimates.json</code>, so they can be compared later with energy measured on the Pi.</div>
+  <h3>Estimated energy per 10 s window (done; Zenodo across days, split 1, seed 0)</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Model</th><th class="r">Parameters</th><th class="r">Dense multiply-adds</th><th class="r">fp32, dense (µJ)</th><th class="r">fp32, event-driven (µJ)</th><th class="r">int8 dense / event (µJ)</th><th class="r">Loihi (µJ)</th></tr></thead>
+    <tbody>
+      <tr><td>Our SNN, fully learnable wavelet<span class="tag ours">ours</span></td><td class="r num">6,241</td><td class="r num">3.07 M</td><td class="r num">14.3</td><td class="r num">0.75</td><td class="r num">0.71 / 0.033</td><td class="r num">7.3</td></tr>
+      <tr><td>Same, with augmentation<span class="tag ours">ours</span></td><td class="r num">6,241</td><td class="r num">3.07 M</td><td class="r num">14.3</td><td class="r num">0.67</td><td class="r num">0.71 / 0.031</td><td class="r num">5.1</td></tr>
+      <tr><td>Our SNN, lean<span class="tag ours">ours</span></td><td class="r num">5,973</td><td class="r num">1.49 M</td><td class="r num">6.9</td><td class="r num">0.47</td><td class="r num">0.35 / 0.022</td><td class="r num">3.5</td></tr>
+      <tr><td>Our same-size GRU<span class="tag twin">our control</span></td><td class="r num">6,288</td><td class="r num">2.73 M</td><td class="r num">13.0</td><td class="r">–</td><td class="r num">0.65</td><td class="r">–</td></tr>
+      <tr><td>Our CWT-CNN<span class="tag pub">ours, paper-style</span></td><td class="r num">24,659</td><td class="r num">11.7 M (incl. CWT)</td><td class="r num">54.0</td><td class="r">–</td><td class="r num">2.7</td><td class="r">–</td></tr>
+      <tr><td>Beat features + SVM<span class="tag pub">ours, paper-style</span></td><td class="r num">300k stored values</td><td class="r num">0.36 M</td><td class="r num">1.7</td><td class="r">–</td><td class="r num">0.08</td><td class="r">–</td></tr>
+    </tbody>
+  </table></div>
+  <p class="small muted">Estimates from operation counts, not measurements. Measured spike rates: encoder 3.8–5.5%, hidden layer 4–7%. Dense, our SNN costs about 4× less than the CNN; event-driven, about 70× less, but only on hardware that skips silent neurons. The SVM's feature extraction is not counted. The Raspberry Pi benchmark will add measured energy and latency.</p>
+  <div class="note"><b>How the estimates are made.</b> <code>edge/energy_estimate.py</code> counts, per 10 s window, each model's parameters, dense multiply-adds, spike-driven additions (SynOps, measured spike rates) and neuron updates. It then applies four published energy models: 45 nm fp32 and int8 operation costs (Horowitz, ISSCC 2014, Fig. 1.1.9: 4.6 pJ per fp32 multiply-add, 0.9 pJ per add); the same plus SRAM weight reads (5 pJ per 32-bit weight); and Loihi neuromorphic costs (Davies et al., IEEE Micro 2018: 23.6 pJ per synaptic spike operation, 81/52 pJ per active/inactive neuron update). The SNN is scored both dense (as a CPU runs it today) and event-driven (only spikes do work). Results are saved to <code>results/energy_estimates.json</code>, so they can be compared later with energy measured on the Pi.</div>
 </section>
 
 <section>
@@ -337,7 +364,7 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:70ch}
 
 <section>
   <h2>Next</h2>
-  <div class="note">All accuracy experiments are finished. Next is the <b>Raspberry Pi energy and latency benchmark</b>, which will replace the cost estimates above with measurements.</div>
+  <div class="note">Still to run: the missing wavelet-ablation cells; the remaining published-design rebuilds (P1–P5, the rest of P6 and P7); the lean SNN's missing Seeing Red repeats; and the exact published networks (Ibrahim et al. 2024 on RW-PPG, 2 of 5 splits done; Rahman &amp; Banavar 2025). Then the <b>Raspberry Pi energy and latency benchmark</b>, which will replace the cost estimates above with measurements.</div>
 </section>
 
 <section id="same-session">
@@ -374,7 +401,7 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:70ch}
       <tr><td>DWT features + SVM</td><td class="r num">38.4 · 54.6 · 57.9%</td><td class="r num">31.4 · 44.8%</td><td class="r num">27.3%</td><td class="r num">44.2%</td></tr>
       <tr><td>Beat features + SVM</td><td class="r num">37.8 · 49.6 · 54.7%</td><td class="r num">29.8 · 39.5%</td><td class="r num">48.0%</td><td class="r num">47.0%</td></tr>
       <tr><td>Our SNN, fully learnable wavelet (<code>x_tau_amp</code>)</td><td class="r num">33.6 · 49.8 · 54.6%</td><td class="r num">31.6 · 49.2%</td><td class="r">–</td><td class="r">–</td></tr>
-      <tr><td>Our SNN, fully learnable wavelet, with augmentation (<code>x_aug_tau_amp</code>)</td><td class="r">running</td><td class="r num">31.2 · 43.9%</td><td class="r num">26.6%</td><td class="r num">36.5%</td></tr>
+      <tr><td>Our SNN, fully learnable wavelet, with augmentation (<code>x_aug_tau_amp</code>)</td><td class="r num">31.3 · 44.0 · 48.6%</td><td class="r num">31.2 · 43.9%</td><td class="r num">26.6%</td><td class="r num">36.5%</td></tr>
     </tbody>
   </table></div>
   <p class="small muted">On the wearable data even the same-session protocol stays far below 90%, so the main cause of the gap is signal quality (wrist watch in daily life; phone camera), not the split. Seeing Red same-session uses non-overlapping 10 s windows, which leaves about 150 training windows (about 11 per person), so the trained models (CNN, SNN, GRU) do worse there than across sittings, where training uses overlapping windows. Only 1-window decisions exist in that split.</p>
@@ -388,7 +415,7 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:70ch}
     <tbody>
       <tr><td><b>Lovisotto et al. 2020</b> (Seeing Red). Per-beat features + RBF SVM, random 2-fold over beats (same videos in train and test), decision from n random beats</td><td>EER about 15% (1 beat), under 5% (more than 10 beats), under 1% (SVM, 20 beats)</td><td>EER 9.7% (1 beat), 5.3% (2), 2.6% (5), 2.2% (10), 2.1% (20). Top-1: 73.2%, 86.1%, 94.7%, 96.0%, 96.2%. 14 people, beats from 125 videos</td><td><span class="score win">Matches</span> (better at 1 beat, slightly worse at 20)</td></tr>
       <tr><td><b>Yadav et al. 2017</b> CWT + DLDA. Train on the first 45 s, test on the rest of the same recording</td><td>CapnoBase (42 people): EER 0.46% (all test data), 1.12% (2 segments)</td><td>BIDMC (53 people): EER 20.3% (1 segment), 18.2% (2), 15.9% (5), 14.4% (10), 12.2% (all). Top-1 31.9% → 66.0%. MIMIC (35): EER 22.2% (1) → 11.6% (all)</td><td><span class="score loss">Does not match</span>. Our version uses 3 s segments, 24 Morlet scales and PCA + LDA. The paper uses peak-centred segments, a single analytic-Morse scale near 1–2 Hz, a 0.5–5 Hz band-pass and Pearson-distance matching, which we have not implemented. Under a random same-session split, the DWT + LDA recreation gets 94.9% top-1 and 1.8% EER on BIDMC, so the gap is the 45 s-train protocol plus these differences. Being fixed next</td></tr>
-      <tr><td><b>CVT-ConvMixer</b> CWT scalogram + CNN. BIDMC + MIMIC + RW-PPG, 5 s segments, 50% overlap, random split</td><td>95% accuracy</td><td><b>Their protocol, our own CWT-CNN</b> (not their network): BIDMC 93.8% random 5-fold, 92.2% chronological 80/20; MIMIC 88.2% / 81.3%.<br><b>Their network</b> (Ibrahim et al. 2024, built from the paper's text, 22.5 M parameters; gaps the paper leaves are listed in the result file): on RW-PPG, one of their three datasets (open, Mendeley), running. BIDMC and MIMIC need about 45 h each on our CPU and are not started</td><td><span class="score mid">Close on BIDMC</span> with our CNN; exact network pending</td></tr>
+      <tr><td><b>CVT-ConvMixer</b> CWT scalogram + CNN. BIDMC + MIMIC + RW-PPG, 5 s segments, 50% overlap, random split</td><td>95% accuracy</td><td><b>Their protocol, our own CWT-CNN</b> (not their network): BIDMC 93.8% random 5-fold, 92.2% chronological 80/20; MIMIC 88.2% / 81.3%.<br><b>Their network</b> (Ibrahim et al. 2024, built from the paper's text, 22.5 M parameters; gaps the paper leaves are listed in the result file): on RW-PPG, one of their three datasets (open, Mendeley): 2 of 5 splits done, top-1 57.8% and 85.1%, EER 7.6% and 2.8% (paused; the 5-split mean comes when it finishes). BIDMC and MIMIC need about 45 h each on our CPU and are not started</td><td><span class="score mid">Close on BIDMC</span> with our CNN; exact network pending</td></tr>
       <tr><td><b>Low-frame-rate PPG</b> CWT + CVT-ConvMixer-LSTM. 46 people, thumb video, 5 s segments, 50% overlap, 80/20 split</td><td>97.7–98% accuracy (CFISHR, not open)</td><td><b>Their protocol, our own CWT-CNN</b> on Seeing Red at 50 Hz: 50.8% random 80/20, 43.0% chronological.<br><b>Their network</b> (Rahman &amp; Banavar 2025, built from the text): BIDMC (they report 98%) and Seeing Red decimated to their 14 Hz frame rate, running. CFISHR is on IEEE DataPort under a signed licence, not open access</td><td><span class="score loss">Does not match</span> with our CNN on different data; exact network pending</td></tr>
     </tbody>
   </table></div>
@@ -531,7 +558,7 @@ function chartA(el, rows){
   h += `<div class="axis"><div></div><div class="ticks">${[0.4,0.5,0.6,0.7,0.8,0.9,1.0].map(t=>`<span style="left:${X(t)}%">${t.toFixed(1)}</span>`).join("")}</div></div>`;
   c.innerHTML = h;
 }
-chartA("chartAF1", AF1); chartA("chartAF2", AF2); chartA("chartAF3", AF3);
+// AF charts removed from the page (AF is left out of the paper)
 
 const ALL = {"bio_zenodo_bio_w10": {"aug": {"runs": 6, "eer1": 29.46, "eer5": 21.666, "top1_5": 0.398, "frr5": 71.16, "params": 6190}, "beat_lr": {"runs": 3, "eer1": 32.641, "eer5": 27.104, "top1_5": 0.255, "frr5": 78.922, "params": null}, "beat_lr_amp": {"runs": 3, "eer1": 26.052, "eer5": 20.721, "top1_5": 0.355, "frr5": 71.405, "params": null}, "beat_svm_amp": {"runs": 3, "eer1": 24.739, "eer5": 19.659, "top1_5": 0.395, "frr5": 65.686, "params": null}, "cwt_cnn": {"runs": 6, "eer1": 24.032, "eer5": 15.742, "top1_5": 0.6, "frr5": 42.81, "params": 24625}, "cwt_cnn_amp": {"runs": 6, "eer1": 20.345, "eer5": 13.976, "top1_5": 0.614, "frr5": 42.239, "params": 24659}, "dwt_knn": {"runs": 3, "eer1": 35.86, "eer5": 24.306, "top1_5": 0.381, "frr5": 73.366, "params": null}, "dwt_lda": {"runs": 3, "eer1": 28.194, "eer5": 20.935, "top1_5": 0.364, "frr5": 66.34, "params": null}, "dwt_svm": {"runs": 3, "eer1": 27.465, "eer5": 21.027, "top1_5": 0.415, "frr5": 64.379, "params": null}, "dwt_svm_amp": {"runs": 3, "eer1": 25.065, "eer5": 19.281, "top1_5": 0.448, "frr5": 61.275, "params": null}, "fixed_wavelet": {"runs": 6, "eer1": 29.204, "eer5": 20.006, "top1_5": 0.414, "frr5": 68.954, "params": 6150}, "full": {"runs": 6, "eer1": 28.919, "eer5": 19.7, "top1_5": 0.4, "frr5": 66.83, "params": 6190}, "gru_twin": {"runs": 6, "eer1": 28.297, "eer5": 20.563, "top1_5": 0.426, "frr5": 65.278, "params": 6237}, "snn_raw": {"runs": 6, "eer1": 31.953, "eer5": 24.796, "top1_5": 0.273, "frr5": 81.536, "params": 5478}, "tau_het": {"runs": 6, "eer1": 25.323, "eer5": 17.913, "top1_5": 0.458, "frr5": 64.052, "params": 6190}, "x_aug_gru_amp": {"runs": 6, "eer1": 24.077, "eer5": 18.627, "top1_5": 0.383, "frr5": 69.199, "params": 6288}, "x_aug_gru_fixed_amp": {"runs": 6, "eer1": 23.947, "eer5": 18.352, "top1_5": 0.403, "frr5": 66.013, "params": 6248}, "x_aug_shared_tau_amp": {"runs": 6, "eer1": 22.798, "eer5": 16.125, "top1_5": 0.442, "frr5": 59.886, "params": 6209}, "x_aug_tau_amp": {"runs": 6, "eer1": 22.473, "eer5": 16.013, "top1_5": 0.439, "frr5": 59.722, "params": 6241}, "x_fixed_tau_amp": {"runs": 6, "eer1": 22.89, "eer5": 16.131, "top1_5": 0.489, "frr5": 57.108, "params": 6201}, "x_gru_amp": {"runs": 6, "eer1": 24.148, "eer5": 18.321, "top1_5": 0.452, "frr5": 64.052, "params": 6288}, "x_h128_tau_amp": {"runs": 6, "eer1": 23.868, "eer5": 16.503, "top1_5": 0.502, "frr5": 56.618, "params": 20513}, "x_lean_tau_amp": {"runs": 6, "eer1": 23.858, "eer5": 16.896, "top1_5": 0.469, "frr5": 60.376, "params": 5973}, "x_raw_tau_amp": {"runs": 6, "eer1": 25.548, "eer5": 20.215, "top1_5": 0.302, "frr5": 77.859, "params": 5529}, "x_tau": {"runs": 6, "eer1": 23.635, "eer5": 16.825, "top1_5": 0.464, "frr5": 59.314, "params": 6190}, "x_tau_amp": {"runs": 6, "eer1": 22.653, "eer5": 15.62, "top1_5": 0.492, "frr5": 56.699, "params": 6241}}, "bio_seeing_red_luma_w10_trs0.5": {"beat_lr": {"runs": 3, "eer1": 26.325, "eer5": 24.944, "top1_5": 0.477, "frr5": 74.064, "params": null}, "beat_lr_amp": {"runs": 3, "eer1": 21.99, "eer5": 20.456, "top1_5": 0.519, "frr5": 65.272, "params": null}, "beat_svm_amp": {"runs": 3, "eer1": 21.232, "eer5": 19.553, "top1_5": 0.505, "frr5": 62.587, "params": null}, "cwt_cnn": {"runs": 6, "eer1": 25.516, "eer5": 24.273, "top1_5": 0.447, "frr5": 66.831, "params": 24430}, "cwt_cnn_amp": {"runs": 6, "eer1": 21.449, "eer5": 20.447, "top1_5": 0.512, "frr5": 53.383, "params": 24458}, "dwt_knn": {"runs": 3, "eer1": 36.08, "eer5": 29.176, "top1_5": 0.316, "frr5": 84.201, "params": null}, "dwt_lda": {"runs": 3, "eer1": 28.704, "eer5": 26.792, "top1_5": 0.381, "frr5": 71.288, "params": null}, "dwt_svm": {"runs": 3, "eer1": 26.73, "eer5": 25.784, "top1_5": 0.417, "frr5": 68.341, "params": null}, "dwt_svm_amp": {"runs": 3, "eer1": 22.932, "eer5": 20.95, "top1_5": 0.497, "frr5": 64.748, "params": null}, "x_aug_e300": {"runs": 6, "eer1": 24.428, "eer5": 21.774, "top1_5": 0.433, "frr5": 67.863, "params": 6034}, "x_aug_fixed_tau_amp": {"runs": 6, "eer1": 26.627, "eer5": 23.839, "top1_5": 0.389, "frr5": 66.836, "params": 5994}, "x_aug_gru_amp": {"runs": 6, "eer1": 25.1, "eer5": 22.383, "top1_5": 0.434, "frr5": 65.376, "params": 6159}, "x_aug_gru_fixed_amp": {"runs": 6, "eer1": 24.575, "eer5": 21.747, "top1_5": 0.436, "frr5": 63.98, "params": 6119}, "x_aug_h128_tau_amp": {"runs": 6, "eer1": 26.581, "eer5": 24.366, "top1_5": 0.39, "frr5": 71.42, "params": 20114}, "x_aug_lean_tau_amp": {"runs": 6, "eer1": 28.145, "eer5": 25.465, "top1_5": 0.404, "frr5": 69.637, "params": 5766}, "x_aug_sdrop": {"runs": 6, "eer1": 26.358, "eer5": 23.683, "top1_5": 0.365, "frr5": 71.102, "params": 6034}, "x_aug_shared_tau_amp": {"runs": 6, "eer1": 26.95, "eer5": 23.925, "top1_5": 0.349, "frr5": 70.847, "params": 6002}, "x_aug_tau_amp": {"runs": 6, "eer1": 26.689, "eer5": 24.333, "top1_5": 0.375, "frr5": 70.801, "params": 6034}, "x_aug_wavlr": {"runs": 6, "eer1": 26.746, "eer5": 25.392, "top1_5": 0.397, "frr5": 67.539, "params": 6034}, "x_fixed_tau_amp": {"runs": 6, "eer1": 29.234, "eer5": 24.668, "top1_5": 0.415, "frr5": 71.147, "params": 5994}, "x_gru_amp": {"runs": 6, "eer1": 28.318, "eer5": 25.205, "top1_5": 0.376, "frr5": 69.25, "params": 6159}, "x_h128_tau_amp": {"runs": 3, "eer1": 29.95, "eer5": 27.789, "top1_5": 0.419, "frr5": 65.968, "params": 20114}, "x_lean_tau_amp": {"runs": 3, "eer1": 29.41, "eer5": 25.412, "top1_5": 0.376, "frr5": 75.483, "params": 5766}, "x_raw_tau_amp": {"runs": 6, "eer1": 29.111, "eer5": 29.54, "top1_5": 0.375, "frr5": 75.607, "params": 5322}, "x_tau": {"runs": 3, "eer1": 32.464, "eer5": 29.511, "top1_5": 0.34, "frr5": 79.0, "params": 5992}, "x_tau_amp": {"runs": 3, "eer1": 30.56, "eer5": 28.738, "top1_5": 0.419, "frr5": 69.006, "params": 6034}}};
 const ACC = {"bio_zenodo_bio_w10": {"aug": [23.5, 39.8, 19.9, 34.9], "beat_lr": [18.4, 25.5, 12.5, 18.9], "beat_lr_amp": [28.7, 35.5, 24.1, 29.8], "beat_svm_amp": [29.8, 39.5, 24.8, 33.6], "cwt_cnn": [35.2, 60.0, 33.7, 55.5], "cwt_cnn_amp": [39.2, 61.4, 37.8, 57.3], "dwt_knn": [25.6, 38.1, 24.1, 34.6], "dwt_lda": [26.3, 36.4, 22.9, 32.6], "dwt_svm": [26.9, 41.5, 23.1, 35.7], "dwt_svm_amp": [31.4, 44.8, 27.4, 38.4], "fixed_wavelet": [23.1, 41.4, 20.8, 38.3], "full": [22.8, 40.0, 20.3, 36.8], "gru_twin": [23.8, 42.6, 19.5, 38.7], "snn_raw": [17.5, 27.3, 13.3, 23.7], "tau_het": [27.9, 45.8, 25.1, 42.9], "x_aug_gru_amp": [28.2, 38.3, 22.7, 32.1], "x_aug_gru_fixed_amp": [30.2, 40.3, 24.4, 34.3], "x_aug_pk5_tau_amp": [31.7, 44.9, 27.1, 39.4], "x_aug_shared_tau_amp": [31.1, 44.2, 26.2, 39.3], "x_aug_tau_amp": [31.2, 43.9, 26.6, 38.6], "x_fixed_tau_amp": [32.0, 48.9, 28.7, 44.6], "x_gru_amp": [29.1, 45.2, 25.6, 40.0], "x_h128_tau_amp": [30.9, 50.2, 28.4, 46.4], "x_lean_tau_amp": [30.1, 46.9, 26.5, 42.1], "x_pk4_tau_amp": [31.3, 48.1, 27.4, 43.4], "x_pk5_fixed_tau_amp": [30.9, 48.7, 27.7, 44.0], "x_pk5_tau_amp": [30.8, 49.3, 27.6, 45.0], "x_raw_tau_amp": [24.1, 30.2, 18.0, 22.2], "x_tau": [29.1, 46.4, 26.3, 42.3], "x_tau_amp": [31.6, 49.2, 28.2, 44.9]}, "bio_seeing_red_luma_w10_trs0.5": {"beat_lr": [40.7, 47.7, 36.2, 42.3], "beat_lr_amp": [46.1, 51.9, 41.2, 46.4], "beat_svm_amp": [47.0, 50.5, 39.9, 43.2], "cwt_cnn": [39.5, 44.7, 35.3, 39.6], "cwt_cnn_amp": [49.6, 51.2, 45.4, 46.7], "dwt_knn": [30.1, 31.6, 25.3, 25.4], "dwt_lda": [35.4, 38.1, 30.6, 33.2], "dwt_svm": [36.9, 41.7, 31.3, 34.2], "dwt_svm_amp": [44.2, 49.7, 37.8, 42.5], "x_aug_e300": [39.7, 43.3, 34.8, 37.2], "x_aug_fixed_tau_amp": [37.8, 38.9, 33.7, 32.8], "x_aug_gru_amp": [39.7, 43.4, 35.3, 36.5], "x_aug_gru_fixed_amp": [40.8, 43.6, 35.8, 36.3], "x_aug_h128_tau_amp": [36.0, 39.0, 32.1, 32.7], "x_aug_lean_tau_amp": [38.0, 40.4, 32.4, 33.3], "x_aug_pk5_tau_amp": [37.9, 42.6, 33.2, 34.7], "x_aug_sdrop": [35.9, 36.5, 31.2, 30.4], "x_aug_shared_tau_amp": [33.9, 34.9, 30.5, 29.3], "x_aug_tau_amp": [36.5, 37.5, 32.4, 32.7], "x_aug_wavlr": [38.7, 39.7, 33.5, 31.6], "x_fixed_tau_amp": [33.9, 41.5, 31.1, 36.4], "x_gru_amp": [33.4, 37.6, 29.8, 30.9], "x_h128_tau_amp": [35.4, 41.9, 32.0, 38.4], "x_lean_tau_amp": [29.6, 37.6, 26.4, 30.4], "x_pk4_tau_amp": [38.1, 42.3, 34.1, 35.9], "x_pk5_fixed_tau_amp": [31.8, 37.2, 28.1, 31.5], "x_pk5_tau_amp": [33.2, 37.6, 30.1, 32.9], "x_raw_tau_amp": [31.8, 37.5, 27.1, 29.3], "x_tau": [27.8, 34.0, 26.3, 31.7], "x_tau_amp": [35.5, 41.9, 32.2, 37.6]}};
@@ -552,10 +579,10 @@ document.getElementById("full").innerHTML = t + "</tbody>";
     "bio_zenodo_bio_w10": "Zenodo wrist · across days (main test)",
     "bio_seeing_red_luma_w10_trs0.5": "Seeing Red · across sittings (main test)",
     "bio_seeing_red_luma_w10": "Seeing Red · first screen, old recipe",
-    "bio_zenodo_bio_w10_rand": "Zenodo wrist · same session (running)",
+    "bio_zenodo_bio_w10_rand": "Zenodo wrist · same session",
     "bio_seeing_red_luma_w10_rand_s10": "Seeing Red · same session (running)",
-    "bio_mimic_bio_w10_rand": "MIMIC PERform hospital PPG · same session (running)",
-    "bio_bidmc_bio_w10_rand": "BIDMC hospital PPG · same session (running)",
+    "bio_mimic_bio_w10_rand": "MIMIC PERform hospital PPG · same session",
+    "bio_bidmc_bio_w10_rand": "BIDMC hospital PPG · same session",
     "bio_seeing_red_w10": "Seeing Red · red channel (saturated, invalid)",
     "bio_seeing_red_red_w10": "Seeing Red · red channel test (invalid)",
     "bio_seeing_red_green_w10": "Seeing Red · green channel test",
