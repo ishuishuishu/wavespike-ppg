@@ -162,6 +162,7 @@ EER %, 5 windows, 6 repeats. Only the wavelet changes within a column.
   - Symptoms: about 0.77 core each, about 5× more forced context switches, and no run saved after 5.5 h, while sym4 (same code, started together) saved 6 per dataset at about 35–40 min per run.
   - Action, with the user's approval: stopped them (nothing saved, nothing lost) and requeued them at the front with `--threads 2`.
   - Done so far: P6 sym4 6/6 on both datasets; coif1 1/6 on each.
+- **13:00:** at the user's request, the running P6 jobs (coif1, haar, db2, db8) were lowered to `nice` 15, and two extra queue workers (`pw9`, `pw10`) were started at the normal level (`nice` 10). The remaining designs, starting with P7, can now run first.
 
 ## Plan: partly learnable spiking-wavelet designs P1–P7 (approved; being run)
 
