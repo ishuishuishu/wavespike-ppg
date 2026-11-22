@@ -45,7 +45,7 @@ Run every command **from inside this folder** (`cd paper_designs`). Run one job 
 | File | Use |
 |---|---|
 | `README.md` | This guide |
-| `run_design.sh` | Runs one design on one dataset (6 runs) and saves the fold 0, seed 0 model |
+| `run_design.sh` | Runs one design on one dataset (6 runs) and saves its best run (lowest validation EER) |
 | `run_all.sh` | Runs all 5 designs on both datasets, one after another (10 jobs, 60 runs) |
 | `check_results.sh` | Prints the summary tables |
 | `check_models.sh` | Reloads every saved model and runs it once |
@@ -179,10 +179,12 @@ BIO_CHANNEL=luma python -I code/bio_run.py --dataset seeing_red --train-stride 0
 - One result file per run, `<variant>_f<fold>_ts<seed>.json`, in:
   - `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/` (Zenodo);
   - `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/` (Seeing Red).
-- One trained model per job, from **fold 0, seed 0 only**: `<results folder name>__<variant>_f0_ts0.pt` (about 30–50 KB), in `$WAVESPIKE_DATA_ROOT/models/paper_designs/`. That run prints `saved model ...` when the file is written; the other 5 runs of the job save no model.
+- One trained model per job, the job's **best run**: `<results folder name>__<variant>_bestval.pt` (about 30–50 KB), in `$WAVESPIKE_DATA_ROOT/models/paper_designs/`.
+  - After each run, its validation EER is compared with the saved model's. If it's lower, the file is replaced and the run prints `saved model ... (val EER x%)`. Otherwise it prints `model not kept: ...`.
+  - By the end of the job, the file holds the run with the lowest validation EER of the 6.
 - A log per job in `logs/`.
 
-The run commands above are what `run_design.sh` runs, **plus** `--save-model $WAVESPIKE_DATA_ROOT/models/paper_designs --save-runs 0:0 --save-last-only`. If you type a command yourself, add those options so the model is saved.
+The run commands above are what `run_design.sh` runs, **plus** `--save-model $WAVESPIKE_DATA_ROOT/models/paper_designs --save-best-run --save-last-only`. If you type a command yourself, add those options so the model is saved.
 
 **If interrupted:** run the same command again. Finished runs (those with a result file) are skipped; an interrupted run starts again from epoch 0. If a run has a result file but no model file, tell the project lead; don't delete the result file to force a rerun. Don't delete or edit result files.
 
@@ -198,7 +200,11 @@ bash check_results.sh
 
 ## 8. Saved models (for the Raspberry Pi later)
 
-Only one model per design per dataset is saved, **10 in total**: the fold 0, seed 0 run, last-epoch weights. That's enough to run each design on the Pi. The other runs are needed only for the results, not for the Pi.
+Only one model per design per dataset is saved, **10 in total**: the best of its 6 runs, last-epoch weights. That's enough to run each design on the Pi; the other runs are needed only for the results.
+
+- **How "best" is picked:** lowest **validation** EER (last epoch, 5 windows). Test data is never used to choose, so the model's test numbers stay honest.
+- **What's recorded:** the file stores the chosen run's fold, seed and validation EER (`val_eer_last_n5`). Because each run has its own validation set, this is a practical choice for the Pi, not a claim that this run is the best design.
+- **The results don't change:** the paper still reports the mean of all 6 runs.
 
 Each `.pt` file holds:
 - `last_state`: the weights after the last epoch. **This is the model we report**, and the one for the Pi. (`best_state` is left empty.)
@@ -227,7 +233,7 @@ bash check_models.sh
 |---|---|---|---|
 | 1 | Zenodo result files `x_{p2_dot,p4_sep,stf_ssa,stf_swsa,stf_fatm}_f{0,1,2}_ts{0,1}.json` | `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/` | 30 |
 | 2 | Seeing Red result files, same names | `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/` | 30 |
-| 3 | Trained models `*__x_*_f0_ts0.pt` (one per design per dataset) | `$WAVESPIKE_DATA_ROOT/models/paper_designs/` | 10 |
+| 3 | Trained models `*__x_*_bestval.pt` (one per design per dataset) | `$WAVESPIKE_DATA_ROOT/models/paper_designs/` | 10 |
 | 4 | Output of `bash check_models.sh` (10 × `runs OK`) | your terminal | 1 |
 | 5 | Logs | `logs/` | 10 |
 | 6 | Output of `bash check_results.sh` | your terminal | 1 |

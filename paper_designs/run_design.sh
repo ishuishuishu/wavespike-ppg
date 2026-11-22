@@ -16,5 +16,5 @@ case "$DS" in
 esac
 mkdir -p "$HERE/logs"; cd "$HERE"; LOG="logs/${V}_${DS}.log"
 echo "start $V $DS $(date)  commit $(git rev-parse --short HEAD 2>/dev/null || echo unknown)  threads $THREADS" | tee -a "$LOG"
-python -I code/bio_run.py "${ARGS[@]}" --variants "$V" --folds 0,1,2 --seeds 0,1 --threads "$THREADS" --save-model "$WAVESPIKE_DATA_ROOT/models/paper_designs" --save-runs 0:0 --save-last-only 2>&1 | tee -a "$LOG"
+python -I code/bio_run.py "${ARGS[@]}" --variants "$V" --folds 0,1,2 --seeds 0,1 --threads "$THREADS" --save-model "$WAVESPIKE_DATA_ROOT/models/paper_designs" --save-best-run --save-last-only 2>&1 | tee -a "$LOG"
 echo "end $V $DS $(date)" | tee -a "$LOG"

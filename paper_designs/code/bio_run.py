@@ -426,6 +426,8 @@ def main():
                     help="also save each trained SNN/GRU (last and best weights, config, amp normalisation) to DIR as .pt; off by default")
     ap.add_argument("--save-runs", default=None, metavar="F:S,...",
                     help="with --save-model: save only these fold:seed runs (e.g. 0:0); default all")
+    ap.add_argument("--save-best-run", action="store_true",
+                    help="with --save-model: keep one file per variant, the run with the lowest validation EER (last epoch, 5 windows)")
     ap.add_argument("--save-last-only", action="store_true",
                     help="with --save-model: keep only the last-epoch weights (the reported model), not the best-epoch ones")
     ap.add_argument("--train-stride", type=float, default=None,
@@ -470,7 +472,7 @@ def main():
                 p = f"{res_dir}/{v}_f{k}_ts{ts}.json"
                 if os.path.exists(p) and not a.smoke: print("skip (done)", p); continue
                 if spec.get("_kind") == "beat_lr" and ts != int(a.seeds.split(",")[0]): continue   # deterministic: one seed
-                tr, va, te = folds[k]; t0 = time.time(); extra = {}
+                tr, va, te = folds[k]; t0 = time.time(); extra = {}; ck = None
                 if spec.get("_kind") == "beat_lr":
                     from sklearn.linear_model import LogisticRegression; from sklearn.preprocessing import StandardScaler
                     from sklearn.pipeline import make_pipeline
@@ -510,18 +512,15 @@ def main():
                              "hid_rate_last": out["hist"][-1]["hid_rate"], "params": int(g["n_params"](out["best"]))}
                     if a.save_model and (not a.save_runs or f"{k}:{ts}" in a.save_runs.split(",")):   # opt-in, off by default
                         import copy
-                        os.makedirs(a.save_model, exist_ok=True)
-                        mp = f"{a.save_model}/{os.path.basename(res_dir)}__{v}_f{k}_ts{ts}{'_smoke' if a.smoke else ''}.pt"
                         amp_norm = ({"mean": mu.tolist(), "std": sd.tolist(), "columns": ["level", "log pulse std"]}
                                     if getattr(c, "amp_fusion", False) else None)
-                        torch.save({"variant": v, "dataset": a.dataset, "fold": k, "seed": ts, "res_dir": os.path.basename(res_dir),
-                                    "cfg": copy.deepcopy(vars(c)), "identities": [str(u) for u in U], "amp_norm": amp_norm,
-                                    "input": "10 s PPG window at 50 Hz, z-scored per window; amp features appended as trailing columns",
-                                    "last_state": {kk: t.detach().cpu() for kk, t in out["last"].state_dict().items()},
-                                    "best_state": None if a.save_last_only else
-                                                  {kk: t.detach().cpu() for kk, t in out["best"].state_dict().items()},
-                                    "best_epoch": out["best_epoch"]}, mp + ".tmp")
-                        os.replace(mp + ".tmp", mp); print("saved model", mp)
+                        ck = {"variant": v, "dataset": a.dataset, "fold": k, "seed": ts, "res_dir": os.path.basename(res_dir),
+                              "cfg": copy.deepcopy(vars(c)), "identities": [str(u) for u in U], "amp_norm": amp_norm,
+                              "input": "10 s PPG window at 50 Hz, z-scored per window; amp features appended as trailing columns",
+                              "last_state": {kk: t.detach().cpu() for kk, t in out["last"].state_dict().items()},
+                              "best_state": None if a.save_last_only else
+                                            {kk: t.detach().cpu() for kk, t in out["best"].state_dict().items()},
+                              "best_epoch": out["best_epoch"]}
                 rec = {"variant": v, "fold": k, "seed": ts, "dataset": a.dataset, "win": a.win, "stride": a.stride,
                        "minutes": (time.time() - t0)/60, **extra,
                        "y_val": y[va].tolist(), "vid_val": V[va].tolist(), "y_te": y[te].tolist(), "vid_te": V[te].tolist()}
@@ -529,6 +528,17 @@ def main():
                     rec[nm] = {"p_val": np.round(Pv, 6).tolist(), "p_te": np.round(Pt, 6).tolist(),
                                "metrics": [bio_metrics(Pv, y[va], V[va], Pt, y[te], V[te], n) for n in (1, 3, 5)]}
                 if not a.smoke: json.dump(rec, open(p + ".tmp", "w")); os.replace(p + ".tmp", p)
+                if ck is not None:                       # write the model after its result file
+                    os.makedirs(a.save_model, exist_ok=True); sm = "_smoke" if a.smoke else ""
+                    ck["val_eer_last_n5"] = float(rec["last"]["metrics"][2]["eer_val"])   # validation only, never test
+                    if a.save_best_run:                  # keep one file per variant: the run with the lowest validation EER
+                        mp = f"{a.save_model}/{os.path.basename(res_dir)}__{v}_bestval{sm}.pt"
+                        old = torch.load(mp, map_location="cpu", weights_only=False)["val_eer_last_n5"] if os.path.exists(mp) else None
+                        keep = old is None or ck["val_eer_last_n5"] < old
+                    else:
+                        mp = f"{a.save_model}/{os.path.basename(res_dir)}__{v}_f{k}_ts{ts}{sm}.pt"; keep = True
+                    if keep: torch.save(ck, mp + ".tmp"); os.replace(mp + ".tmp", mp); print("saved model", mp, f"(val EER {100*ck['val_eer_last_n5']:.1f}%)")
+                    else: print(f"model not kept: val EER {100*ck['val_eer_last_n5']:.1f}% >= saved {100*old:.1f}%")
                 m = rec["best"]["metrics"][0]; ml = rec["last"]["metrics"][0]
                 print(f"{v:12s} f{k} ts{ts} | top1 {m['top1']:.3f}/{ml['top1']:.3f} EER {100*m['eer']:.1f}/{100*ml['eer']:.1f}% "
                       f"| FAR {100*m['far']:.1f}% FRR {100*m['frr']:.1f}% | {rec['minutes']:.1f} min", flush=True)
