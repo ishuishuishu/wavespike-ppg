@@ -67,6 +67,17 @@ EER %, 5 windows, 6 repeats. Only the wavelet changes within a column.
 - What changes: `cwt_cnn_x_amp` gets 150 epochs × 1,600 class-balanced windows, the same augmentation (applied before the CWT), lr 2e-3, batch 64 and gradient clipping 1.0, with the last epoch kept.
 - Why: the CNN beat the SNN with a shorter recipe (60 epochs, no augmentation), so this checks the comparison is fair.
 - Where: Zenodo across days (screen `cA`) and Seeing Red (screen `cB`).
+- **Result (done, 6/6 runs on each dataset):** EER %, last epoch; top-1 in brackets.
+
+| Model | Zenodo, 1 window | Zenodo, 5 windows | Seeing Red, 1 window | Seeing Red, 5 windows |
+|---|---|---|---|---|
+| Our CWT-CNN, its own recipe (`cwt_cnn_amp`) | 20.3 (39.2%) | 14.0 (61.4%) | 21.4 (49.6%) | 20.4 (51.2%) |
+| **Our CWT-CNN, SNN's recipe (`cwt_cnn_x_amp`)** | 22.0 (34.3%) | 15.8 (48.3%) | 21.1 (47.7%) | 20.0 (49.4%) |
+| Our SNN, fully learnable wavelet, same recipe (`x_aug_tau_amp`) | 22.5 (31.2%) | 16.0 (43.9%) | 26.7 (36.5%) | 24.3 (37.5%) |
+
+- Zenodo: the SNN's recipe makes the CNN **worse** (14.0 → 15.8% EER; top-1 61.4 → 48.3%). Under identical training, the SNN and CNN are close on average (16.0 vs 15.8%), but the CNN still wins 4 of 6 repeats, so by the all-repeats rule this is not a tie claim.
+- Seeing Red: the CNN wins 6 of 6 under either recipe.
+- Conclusion: the CNN's lead on Zenodo came partly from its own (shorter, unaugmented) recipe, not only from its architecture. Each model does best with its own recipe; neither recipe makes the SNN win.
 
 ### Paper reproductions
 - **Lovisotto 2020**, on its own data and protocol: matches. EER 9.7% (1 beat) and 2.1% (20 beats); top-1 73% → 96%.
