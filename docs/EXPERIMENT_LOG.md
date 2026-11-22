@@ -146,6 +146,10 @@ EER %, 5 windows, 6 repeats. Only the wavelet changes within a column.
 - Queue: 34 jobs (17 variants × Zenodo across days and Seeing Red across sittings, 3 folds × 2 seeds each).
 - Workers: 8 queue workers × 3 threads (`pw_worker.sh`, `pw_jobs.txt`, logs `pw1.log`–`pw8.log` on the compute machine).
 - Each worker takes the next job as soon as it finishes, so all cores stay busy once the earlier jobs end.
+- **Restart, day 1 about 12:06:** the P6 haar, db2 and db8 runs (both datasets) were stuck in thread contention.
+  - Symptoms: about 0.77 core each, about 5× more forced context switches, and no run saved after 5.5 h, while sym4 (same code, started together) saved 6 per dataset at about 35–40 min per run.
+  - Action, with the user's approval: stopped them (nothing saved, nothing lost) and requeued them at the front with `--threads 2`.
+  - Done so far: P6 sym4 6/6 on both datasets; coif1 1/6 on each.
 
 ## Plan: partly learnable spiking-wavelet designs P1–P7 (approved; being run)
 
