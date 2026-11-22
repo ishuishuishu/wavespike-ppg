@@ -191,6 +191,24 @@ ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:70ch}
   <p class="small muted">On Seeing Red, our SNN loses to the CWT-CNN in 6/6 repeats and does not beat the beat-feature SVM.</p>
 </section>
 
+<section id="same-recipe">
+  <h2>Was the CNN comparison fair? Training the CNN with our SNN's recipe makes it worse</h2>
+  <p class="muted">Our CWT-CNN was trained with a shorter recipe (60 epochs, no augmentation) than our SNN (150 epochs of 1,600 balanced windows, augmentation, learning rate 2e-3, gradient clipping). To check that the SNN was not handicapped, we retrained the same CNN with exactly the SNN's recipe (<code>cwt_cnn_x_amp</code>). EER %, lower is better; top-1 accuracy in brackets; 6 repeats each.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Model</th><th class="r">Zenodo across days<br>1 win</th><th class="r">Zenodo across days<br>5 win</th><th class="r">Seeing Red<br>1 win</th><th class="r">Seeing Red<br>5 win</th></tr></thead>
+    <tbody>
+      <tr><td>Our CWT-CNN, its own recipe (<code>cwt_cnn_amp</code>)<span class="tag pub">ours, paper-style</span></td><td class="r num">20.3 (39.2%)</td><td class="r num"><b>14.0</b> (61.4%)</td><td class="r num">21.4 (49.6%)</td><td class="r num">20.4 (51.2%)</td></tr>
+      <tr><td>Our CWT-CNN, our SNN's recipe (<code>cwt_cnn_x_amp</code>)<span class="tag pub">ours, paper-style</span></td><td class="r num">22.0 (34.3%)</td><td class="r num">15.8 (48.3%)</td><td class="r num">21.1 (47.7%)</td><td class="r num"><b>20.0</b> (49.4%)</td></tr>
+      <tr><td>Our SNN, fully learnable wavelet, same recipe (<code>x_aug_tau_amp</code>)<span class="tag ours">ours</span></td><td class="r num">22.5 (31.2%)</td><td class="r num">16.0 (43.9%)</td><td class="r num">26.7 (36.5%)</td><td class="r num">24.3 (37.5%)</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="takeaways">
+    <li><span class="chip win">Fair</span><div>The comparison did not favour the CNN through training. Given our SNN's recipe, the CNN gets <b>worse</b> on Zenodo: 14.0% → 15.8% error, and top-1 drops from 61.4% to 48.3%. On Seeing Red it barely changes (20.4% → 20.0%).</div></li>
+    <li><span class="chip mid">Close</span><div>Under identical training on Zenodo, our SNN and the CNN are close on average (16.0% vs 15.8%; top-1 43.9% vs 48.3%), at about a quarter of the CNN's size and estimated energy. The CNN still wins 4 of 6 repeats, so by the all-repeats rule this is not a tie.</div></li>
+    <li><span class="chip loss">Limit</span><div>Each model is best with its own recipe, and the CNN at its best (14.0%) remains more accurate than our SNN at its best (15.6%). On Seeing Red the CNN wins 6 of 6 repeats under either recipe. So this result shows the comparison was fair; it does not show the SNN is more accurate.</div></li>
+  </ul>
+</section>
+
 <section>
   <h2>Does the wavelet help? Does learning it help?</h2>
   <div class="cols">
