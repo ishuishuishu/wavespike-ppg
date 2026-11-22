@@ -2,6 +2,28 @@
 
 This folder has everything needed to run our PPG versions of four published spiking-wavelet designs (P2, P3, P4, P5) and compare them with our own SNN. It is self-contained: copy just this folder to a server and follow this guide top to bottom.
 
+## Your job, in short
+
+1. Prepare two open datasets (Seeing Red and Zenodo).
+2. Train **5 models** (the P2, P3, P4 and P5 designs plus one baseline) on **both datasets**, **6 times each** (3 folds × 2 seeds). That's 60 training runs. One command, `bash run_all.sh`, does all of it, one run at a time, in about one to two days.
+3. Each run writes a result file. For each design on each dataset, the best of its 6 runs (chosen on validation data) is also saved as a trained model for the Raspberry Pi: **10 models**.
+4. Run two checks, then send back the files listed below.
+
+## Deliverables (what to send back)
+
+| # | Deliverable | Where | Count |
+|---|---|---|---|
+| 1 | Zenodo result files: `x_p2_dot`, `x_p4_sep`, `x_stf_ssa`, `x_stf_swsa`, `x_stf_fatm`, each as `_f0_ts0` … `_f2_ts1.json` | `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/` | 30 |
+| 2 | Seeing Red result files, same names | `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/` | 30 |
+| 3 | Trained models, one per design per dataset (exact names in §8) | `$WAVESPIKE_DATA_ROOT/models/paper_designs/` | 10 |
+| 4 | Printout of `bash check_models.sh`: 10 models, each with `runs OK` | your terminal | 1 |
+| 5 | Printout of `bash check_results.sh`: the summary tables | your terminal | 1 |
+| 6 | Logs, one per design per dataset | `logs/` | 10 |
+| 7 | Commit hash (or the name of the zip you received), plus Python, PyTorch and NumPy versions | commands in §9 | 1 |
+| 8 | A short note on anything unexpected (tracebacks, wrong person counts, odd numbers, a model without `runs OK`), or "nothing unexpected" | a message | 1 |
+
+**Done means:** 60 result files, 10 model files, 10 × `runs OK`, the summary, 10 logs, your versions and the note. §9 has one command that zips everything up.
+
 ## Important: what "recreate" means here
 
 None of these four papers is about PPG:
@@ -27,6 +49,25 @@ So we can't rerun their experiments. Instead, each paper's **wavelet design** is
 
 All five also feed two amplitude features (signal level and pulse size) into the output layer, like our own models (`amp_fusion`).
 
+## How the code is organised
+
+There's **no separate program per paper**. All four designs are in **one file**, `code/spiking_wavelets.py`, and they all run through the same pipeline. You choose a paper by its variant name.
+
+| Paper | Its code, in `code/spiking_wavelets.py` | What it replaces | Variant |
+|---|---|---|---|
+| P2 | `class DoT` | The wavelet front end of our SNN | `x_p2_dot` |
+| P4 | `class SepSWT` | The wavelet front end of our SNN | `x_p4_sep` |
+| Baseline | `class Mixer`, branch `ssa` | The token mixer inside a shared spiking transformer (`class TokenNet`) | `x_stf_ssa` |
+| P3 | `class Mixer`, branch `swsa` | Same | `x_stf_swsa` |
+| P5 | `class Mixer`, branch `fatm` | Same | `x_stf_fatm` |
+
+- **Why one shared pipeline:** the comparison only means something if the data, folds, training recipe, metrics and (for P2 and P4) the spiking core are identical, and only the wavelet design differs. Separate copies per paper could drift apart.
+- **What's shared:**
+  - `code/bio_run.py` loads the data, builds the folds, trains, evaluates and saves; the variants are defined there.
+  - `code/cells/` holds our SNN and training loop.
+- **Paper-specific choices:** where a paper leaves something unstated (a kernel size, a time constant, an initial value), the choice we made is written, paper by paper, in the docstring at the top of `code/spiking_wavelets.py`.
+- The file also contains P1, P6 and P7. Those aren't part of this job; ignore them.
+
 ## Checklist
 
 1. [ ] Set up Python and the data folder (§4.1).
@@ -36,7 +77,7 @@ All five also feed two amplitude features (signal level and pulse size) into the
 5. [ ] Run all designs: `bash run_all.sh` (§6).
 6. [ ] Print the results: `bash check_results.sh` (§7).
 7. [ ] Check the saved models: `bash check_models.sh`, with 10 × `runs OK` (§8).
-8. [ ] Send back the deliverables (§9).
+8. [ ] Zip and send back the deliverables (§9).
 
 Run every command **from inside this folder** (`cd paper_designs`). Run one job at a time.
 
@@ -206,12 +247,28 @@ Only one model per design per dataset is saved, **10 in total**: the best of its
 - **What's recorded:** the file stores the chosen run's fold, seed and validation EER (`val_eer_last_n5`). Because each run has its own validation set, this is a practical choice for the Pi, not a claim that this run is the best design.
 - **The results don't change:** the paper still reports the mean of all 6 runs.
 
+The 10 files you should end up with:
+
+```text
+bio_zenodo_bio_w10__x_p2_dot_bestval.pt
+bio_zenodo_bio_w10__x_p4_sep_bestval.pt
+bio_zenodo_bio_w10__x_stf_ssa_bestval.pt
+bio_zenodo_bio_w10__x_stf_swsa_bestval.pt
+bio_zenodo_bio_w10__x_stf_fatm_bestval.pt
+bio_seeing_red_luma_w10_trs0.5__x_p2_dot_bestval.pt
+bio_seeing_red_luma_w10_trs0.5__x_p4_sep_bestval.pt
+bio_seeing_red_luma_w10_trs0.5__x_stf_ssa_bestval.pt
+bio_seeing_red_luma_w10_trs0.5__x_stf_swsa_bestval.pt
+bio_seeing_red_luma_w10_trs0.5__x_stf_fatm_bestval.pt
+```
+
 Each `.pt` file holds:
 - `last_state`: the weights after the last epoch. **This is the model we report**, and the one for the Pi. (`best_state` is left empty.)
 - `cfg`: every model setting, including which design it is.
 - `identities`: the person IDs, in class order.
 - `amp_norm`: the mean and standard deviation used to scale the two amplitude features (computed on that fold's training data).
-- The variant, dataset, fold, seed and best epoch.
+- The variant, dataset, and the fold and seed of the chosen run.
+- `val_eer_last_n5`: the chosen run's validation EER.
 
 Saving changes nothing else: training, results and result files are exactly as without it.
 
@@ -227,20 +284,31 @@ bash check_models.sh
 
 **On the Pi (later, not part of this job):** the models run with PyTorch, which installs on a 64-bit Raspberry Pi OS. The project's NumPy-only Pi code covers only our own SNN, not these designs.
 
-## 9. Deliverables (what to send back)
+## 9. Package and send the deliverables
 
-| # | Deliverable | Where | Count |
-|---|---|---|---|
-| 1 | Zenodo result files `x_{p2_dot,p4_sep,stf_ssa,stf_swsa,stf_fatm}_f{0,1,2}_ts{0,1}.json` | `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/` | 30 |
-| 2 | Seeing Red result files, same names | `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/` | 30 |
-| 3 | Trained models `*__x_*_bestval.pt` (one per design per dataset) | `$WAVESPIKE_DATA_ROOT/models/paper_designs/` | 10 |
-| 4 | Output of `bash check_models.sh` (10 × `runs OK`) | your terminal | 1 |
-| 5 | Logs | `logs/` | 10 |
-| 6 | Output of `bash check_results.sh` | your terminal | 1 |
-| 7 | Commit hash (or the name of the folder/zip you received), plus Python, PyTorch and NumPy versions | `git log --oneline -1`; `python -c "import sys, torch, numpy; print(sys.version, torch.__version__, numpy.__version__)"` | 1 |
-| 8 | Notes on anything unexpected: tracebacks, wrong person counts, odd numbers, a model without `runs OK` | a short message | – |
+The deliverables are listed in the table at the top of this guide. These commands collect all of them into one zip, `paper_designs_results.zip`:
 
-**Done means:** 60 result files, 10 model files, 10 × `runs OK`, 10 logs and the summary. Send them to the project lead directly (a zip is fine; the models total under 1 MB). Don't commit them to the repository or post them publicly.
+```bash
+cd paper_designs
+bash check_models.sh  > check_models.txt  2>&1
+bash check_results.sh > check_results.txt 2>&1
+{ git log --oneline -1 2>/dev/null || echo "no git: <name of the zip you received>"
+  python -c "import sys, torch, numpy; print(sys.version, torch.__version__, numpy.__version__)"; } > versions.txt
+R=$WAVESPIKE_DATA_ROOT
+zip -r paper_designs_results.zip check_models.txt check_results.txt versions.txt logs \
+    $R/results/bio_zenodo_bio_w10/x_{p2_dot,p4_sep,stf_ssa,stf_swsa,stf_fatm}_f*_ts*.json \
+    $R/results/bio_seeing_red_luma_w10_trs0.5/x_{p2_dot,p4_sep,stf_ssa,stf_swsa,stf_fatm}_f*_ts*.json \
+    $R/models/paper_designs/*_bestval.pt
+```
+
+Before sending, check:
+- `check_models.txt` lists **10** models, each with `runs OK`;
+- `check_results.txt` shows **6 runs** for every design on both datasets;
+- the zip has 60 `.json` files and 10 `.pt` files (`unzip -l paper_designs_results.zip`).
+
+If `zip` isn't installed, use `sudo apt install zip`, or any archive tool with the same files. Editing `versions.txt` by hand (for example to add the zip name) is fine.
+
+Send the zip and your short note (deliverable 8) to the project lead directly. The zip should be a few MB. Don't commit it to the repository or post it publicly.
 
 ## 10. Project rules
 
