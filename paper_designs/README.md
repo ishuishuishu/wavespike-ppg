@@ -35,7 +35,8 @@ All five also feed two amplitude features (signal level and pulse size) into the
 4. [ ] Run the smoke test; check there's no `Traceback` (§5).
 5. [ ] Run all designs: `bash run_all.sh` (§6).
 6. [ ] Print the results: `bash check_results.sh` (§7).
-7. [ ] Send back the deliverables (§8).
+7. [ ] Check the saved models: `bash check_models.sh`, with 60 × `runs OK` (§8).
+8. [ ] Send back the deliverables (§9).
 
 Run every command **from inside this folder** (`cd paper_designs`). Run one job at a time.
 
@@ -44,9 +45,11 @@ Run every command **from inside this folder** (`cd paper_designs`). Run one job 
 | File | Use |
 |---|---|
 | `README.md` | This guide |
-| `run_design.sh` | Runs one design on one dataset (6 runs) |
+| `run_design.sh` | Runs one design on one dataset (6 runs) and saves the trained models |
 | `run_all.sh` | Runs all 5 designs on both datasets, one after another (10 jobs, 60 runs) |
 | `check_results.sh` | Prints the summary tables |
+| `check_models.sh` | Reloads every saved model and runs it once |
+| `code/load_model.py` | Rebuilds one saved model and runs it (used by `check_models.sh`; the starting point for the Pi) |
 | `requirements.txt` | Python package versions used for our runs |
 | `code/spiking_wavelets.py` | The P2–P5 designs, with every gap-filling choice documented |
 | `code/bio_run.py` | Training, evaluation and summaries |
@@ -176,9 +179,12 @@ BIO_CHANNEL=luma python -I code/bio_run.py --dataset seeing_red --train-stride 0
 - One result file per run, `<variant>_f<fold>_ts<seed>.json`, in:
   - `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/` (Zenodo);
   - `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/` (Seeing Red).
+- One trained model per run, `<results folder name>__<variant>_f<fold>_ts<seed>.pt` (about 30–80 KB), in `$WAVESPIKE_DATA_ROOT/models/paper_designs/`. Each run prints `saved model ...` when its file is written.
 - A log per job in `logs/`.
 
-**If interrupted:** run the same command again. Finished runs (those with a result file) are skipped; an interrupted run starts again from epoch 0. Don't delete or edit result files.
+The run commands above are what `run_design.sh` runs, **plus** `--save-model $WAVESPIKE_DATA_ROOT/models/paper_designs`. If you type a command yourself, add that option so the model is saved.
+
+**If interrupted:** run the same command again. Finished runs (those with a result file) are skipped; an interrupted run starts again from epoch 0. If a run has a result file but no model file, tell the project lead; don't delete the result file to force a rerun. Don't delete or edit result files.
 
 ## 7. Check the results
 
@@ -190,20 +196,46 @@ bash check_results.sh
 - Read the rows where `n = 5`, the `EER% b/l` column, after the slash (last epoch). `top1 b/l` after the slash is the matching top-1 accuracy.
 - There's no "correct" number for these designs. Report a mean EER outside about 12–40% as unexpected.
 
-## 8. Deliverables (what to send back)
+## 8. Saved models (for the Raspberry Pi later)
+
+Every run saves its trained model. Each `.pt` file holds:
+- `last_state`: the weights after the last epoch. **This is the model we report**, and the one for the Pi.
+- `best_state`: the weights at the lowest validation loss, kept for reference.
+- `cfg`: every model setting, including which design it is.
+- `identities`: the person IDs, in class order.
+- `amp_norm`: the mean and standard deviation used to scale the two amplitude features (computed on that fold's training data).
+- The variant, dataset, fold, seed and best epoch.
+
+Saving changes nothing else: training, results and result files are exactly as without it.
+
+Check every model rebuilds and runs:
+
+```bash
+bash check_models.sh
+```
+
+- It must list **60** models, each ending in `runs OK`.
+- The predicted identity it prints is for a synthetic pulse and means nothing; only `runs OK` matters.
+- To check one file: `python -I code/load_model.py $WAVESPIKE_DATA_ROOT/models/paper_designs/<file>.pt`.
+
+**On the Pi (later, not part of this job):** the models run with PyTorch, which installs on a 64-bit Raspberry Pi OS. The project's NumPy-only Pi code covers only our own SNN, not these designs.
+
+## 9. Deliverables (what to send back)
 
 | # | Deliverable | Where | Count |
 |---|---|---|---|
 | 1 | Zenodo result files `x_{p2_dot,p4_sep,stf_ssa,stf_swsa,stf_fatm}_f{0,1,2}_ts{0,1}.json` | `$WAVESPIKE_DATA_ROOT/results/bio_zenodo_bio_w10/` | 30 |
 | 2 | Seeing Red result files, same names | `$WAVESPIKE_DATA_ROOT/results/bio_seeing_red_luma_w10_trs0.5/` | 30 |
-| 3 | Logs | `logs/` | 10 |
-| 4 | Output of `bash check_results.sh` | your terminal | 1 |
-| 5 | Commit hash (or the name of the folder/zip you received), plus Python, PyTorch and NumPy versions | `git log --oneline -1`; `python -c "import sys, torch, numpy; print(sys.version, torch.__version__, numpy.__version__)"` | 1 |
-| 6 | Notes on anything unexpected: tracebacks, wrong person counts, odd numbers | a short message | – |
+| 3 | Trained models, `*.pt` | `$WAVESPIKE_DATA_ROOT/models/paper_designs/` | 60 |
+| 4 | Output of `bash check_models.sh` (60 × `runs OK`) | your terminal | 1 |
+| 5 | Logs | `logs/` | 10 |
+| 6 | Output of `bash check_results.sh` | your terminal | 1 |
+| 7 | Commit hash (or the name of the folder/zip you received), plus Python, PyTorch and NumPy versions | `git log --oneline -1`; `python -c "import sys, torch, numpy; print(sys.version, torch.__version__, numpy.__version__)"` | 1 |
+| 8 | Notes on anything unexpected: tracebacks, wrong person counts, odd numbers, a model without `runs OK` | a short message | – |
 
-**Done means:** 60 result files, 10 logs and the summary. Send them to the project lead directly (a zip is fine). Don't commit them to the repository or post them publicly.
+**Done means:** 60 result files, 60 model files, 60 × `runs OK`, 10 logs and the summary. Send them to the project lead directly (a zip is fine; the models total a few MB). Don't commit them to the repository or post them publicly.
 
-## 9. Project rules
+## 10. Project rules
 
 - Open-access data only.
 - PPG is the only model input.
