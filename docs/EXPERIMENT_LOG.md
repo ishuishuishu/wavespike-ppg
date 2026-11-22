@@ -162,6 +162,12 @@ EER %, 5 windows, 6 repeats. Only the wavelet changes within a column.
   - Symptoms: about 0.77 core each, about 5× more forced context switches, and no run saved after 5.5 h, while sym4 (same code, started together) saved 6 per dataset at about 35–40 min per run.
   - Action, with the user's approval: stopped them (nothing saved, nothing lost) and requeued them at the front with `--threads 2`.
   - Done so far: P6 sym4 6/6 on both datasets; coif1 1/6 on each.
+- **13:30 correction:** the two extra workers inherited the lowered priority from the command that started them, so P7 ran at `nice` 19, the lowest. A normal user cannot raise a priority again, so both P7 runs (27 min in, nothing saved) were stopped and restarted from a fresh shell at `nice` 10.
+- **Fidelity checks on the papers' own data (approved; run at the very end, after every other job):**
+  - P1/P2: reconstruct MIT-BIH ECG with our DoE and DoT filterbanks and compare the RMSE with their Table II (for example, DoE 0.085 and DoT 0.059 at c = 2, K = 8).
+  - P2: their synthetic sine-mixture reconstruction (qualitative only; the paper reports no numbers).
+  - P6: MNIST with a DWT front end and a convolutional SNN, compared with their 99.25%.
+  - The other four papers' tasks (ImageNet/CIFAR, image restoration, licensed EEG) are not feasible here; they are labelled "rebuilt from the paper's text".
 - **13:00:** at the user's request, the running P6 jobs (coif1, haar, db2, db8) were lowered to `nice` 15, and two extra queue workers (`pw9`, `pw10`) were started at the normal level (`nice` 10). The remaining designs, starting with P7, can now run first.
 
 ## Plan: partly learnable spiking-wavelet designs P1–P7 (approved; being run)
