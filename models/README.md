@@ -4,7 +4,8 @@
 |---|---|---|
 | `bio_zenodo_bio_w10__x_aug_tau_amp_f0_ts0.pt` | Our best SNN (fully learnable wavelet, augmentation, amplitude input), Zenodo across days, fold 0, seed 0, last-epoch weights | PyTorch: `python -I lean_snn/code/load_model.py <file>` |
 | `wavespike_best_zenodo.npz` | The same model converted for the Raspberry Pi | NumPy only: `python3 edge/rpi_infer.py <file>` |
-
+| `bio_seeing_red_luma_w10_trs0.5__x_aug_tau_amp_f0_ts0.pt` | Our best SNN, Seeing Red (phone camera) across sittings, fold 0, seed 0, last-epoch weights. Test EER 28.0 / 25.0 / 22.4% and top-1 33.8 / 31.9 / 33.3% on 1 / 3 / 5 windows; the original run of this split gave 27.5 / 25.0 / 24.8% EER | PyTorch (`load_model.py`) |
+| `wavespike_best_seeing_red.npz` | The same model for the Raspberry Pi. Needs `level=` (mean camera brightness of the window, before high-pass) in `classify_window`. Check on 200 test windows: same identity on 100%; 99% of windows equal to PyTorch within 0.1%, 2 differ by up to 0.6 from a spike flipping at its threshold | NumPy only (`rpi_infer.py`) |
 | `bio_zenodo_bio_w10__x_p1_doe_learn_bestval.pt` | P1 DoE with learnable scales (our extension), Zenodo; best of 6 runs by validation EER (fold 2, seed 1, val EER 13.7%) | PyTorch (`load_model.py`) |
 | `bio_seeing_red_luma_w10_trs0.5__x_p1_doe_learn_bestval.pt` | Same, Seeing Red (fold 2, seed 0, val EER 16.1%) | PyTorch |
 | `bio_zenodo_bio_w10__x_p1_doe_penc_bestval.pt` | P1 DoE with the paper's own encoder, Zenodo (fold 2, seed 1, val EER 11.8%) | PyTorch |
