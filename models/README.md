@@ -11,6 +11,14 @@
 | `bio_zenodo_bio_w10__x_p1_doe_penc_bestval.pt` | P1 DoE with the paper's own encoder, Zenodo (fold 2, seed 1, val EER 11.8%) | PyTorch |
 | `bio_seeing_red_luma_w10_trs0.5__x_p1_doe_penc_bestval.pt` | Same, Seeing Red (fold 0, seed 1, val EER 15.6%) | PyTorch |
 
+| `bio_<dataset>__x_p2_dot_bestval.pt` (2 files) | P2 DoT (Pedersen et al., ICASSP 2026), Zenodo and Seeing Red | PyTorch |
+| `bio_<dataset>__x_p4_sep_bestval.pt` (2 files) | P4 Haar + separable conv (Zhao et al. 2026) | PyTorch |
+| `bio_<dataset>__x_stf_ssa_bestval.pt` (2 files) | Spiking-transformer baseline (Spikformer self-attention), the reference for P3, P5 and P7's head | PyTorch |
+| `bio_<dataset>__x_stf_swsa_bestval.pt` (2 files) | P3 SpikeWavformer SWSA (Yuan et al. 2025), with the exact Haar inverse | PyTorch |
+| `bio_<dataset>__x_stf_fatm_bestval.pt` (2 files) | P5 SWformer FATM (Fang et al. 2024), with the exact Haar inverse | PyTorch |
+
+`<dataset>` is `zenodo_bio_w10` or `seeing_red_luma_w10_trs0.5`. **P2, P3, P4, P5 and SSA have one run each so far** (fold 0, seed 0), so these files are that run; they will be replaced by the best of 6 by validation EER when the remaining runs finish.
+
 P1 models are designs rebuilt from the paper's text (Pedersen et al.), not the paper's own models. "Best" is chosen on validation data only; the reported P1 results are the mean of all 6 runs. Their 6-run test means (last epoch, 5 windows): learnable scales 16.4% (Zenodo) / 27.4% (Seeing Red) EER; paper encoder 17.0% / 23.8%. The P1 front ends are not exportable to the NumPy Pi format; they run with PyTorch.
 
 **Test results of the best-SNN run** (fold 0 seed 0, last epoch; our own run): EER 23.4 / 19.9 / 18.4% and top-1 26.9 / 37.1 / 36.3% for decisions on 1 / 3 / 5 windows. Fold 0 is the hardest Zenodo split; the published 6-run mean (16.0% EER at 5 windows) is unchanged. The original fold-0 seed-0 run gave 23.6 / 19.9 / 18.1% EER, so this retrained copy matches it within normal run-to-run variation.
