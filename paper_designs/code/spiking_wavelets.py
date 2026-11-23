@@ -29,6 +29,10 @@ threshold 1.0 (0.5 for P3, as stated), spiking MLP, mean-pooled spiking readout)
   P3 stf_swsa   SpikeWavformer SWSA: SSA output concatenated with a Haar DWT -> conv -> IDWT branch, then linear
   P5 stf_fatm   SWformer FATM: spiking Haar -> block-diagonal weights (K = 2 blocks) -> inverse Haar, with ternary
                 {-1,0,1} spikes in the wavelet branch, summed with a depthwise conv (k = 3) and a pointwise conv branch.
+  Haar over tokens: 125 tokens are zero-padded to 128 (Haar needs a power of 2). P3 and P5 keep all 128 coefficients
+  between the transform and its inverse, so the inverse is exact (fixed 2026-11-23; before, the transform was cut to
+  125 coefficients and the last 3 tokens were not reconstructed). The P7 FW head outputs the transform itself, so it
+  keeps the first 125 coefficients.
 """
 import math
 import numpy as np
@@ -191,23 +195,28 @@ def make_token_nets(g):
                 s.ter1, s.ter2 = LIF(th, ternary=True), LIF(th, ternary=True)
                 s.sl = nn.Conv1d(D, D, 3, padding=1, groups=D); s.cm = nn.Conv1d(D, D, 1)
             s.bn = nn.BatchNorm1d(D)
-        def hw(s, X, inv=False):              # Haar over the token axis; X: (..., N, D)
+        def hw(s, X, inv=False):              # Haar over the token axis; X: (..., N, D). Output cut to N (P7 FW head)
             N = X.shape[-2]; Xp = F.pad(X, (0, 0, 0, s.Np - N)); H = s.H.t() if inv else s.H
             return (H @ Xp)[..., :N, :]
+        def dwt(s, X):                        # exact Haar over tokens: pad N -> Np, keep all Np coefficients
+            return s.H @ F.pad(X, (0, 0, 0, s.Np - X.shape[-2]))
+        def idwt(s, W, N):                    # exact inverse of dwt, then back to the N real tokens
+            return (s.H.t() @ W)[..., :N, :]
         def forward(s, X):                    # X: (Tsim, B, N, D) spikes
             Ts, B, N, D = X.shape
             if s.kind == "ssa" or s.kind == "swsa":
                 Q, K, V = s.lq(s.q(X)), s.lk(s.k(X)), s.lv(s.v(X))
                 Y = (Q @ K.transpose(-1, -2)) @ V*0.125
                 if s.kind == "swsa":
-                    W = s.hw(X); W = s.wconv(W.reshape(Ts*B, N, D).transpose(1, 2)).transpose(1, 2).reshape(Ts, B, N, D)
-                    Y = s.fuse(torch.cat([Y, s.hw(W, inv=True)], -1))
+                    Np = s.Np; W = s.dwt(X)
+                    W = s.wconv(W.reshape(Ts*B, Np, D).transpose(1, 2)).transpose(1, 2).reshape(Ts, B, Np, D)
+                    Y = s.fuse(torch.cat([Y, s.idwt(W, N)], -1))
             elif s.kind == "fw": Y = s.hw(X)                                   # P7: parameter-free
             elif s.kind == "fwc": Y = s.mix.sum()*s.hw(X)                      # = one gain: the three bases coincide
             elif s.kind == "fatm":
-                Wc = s.ter1(s.hw(X))                                           # spiking Haar (ternary)
+                Wc = s.ter1(s.dwt(X))                                          # spiking Haar (ternary), all Np coefficients
                 Wc = torch.cat([Wc[..., i*(D//2):(i+1)*(D//2)] @ s.wb[i] for i in range(2)], -1)
-                Y = s.ter2(s.hw(Wc, inv=True))
+                Y = s.ter2(s.idwt(Wc, N))
                 Z = X.reshape(Ts*B, N, D).transpose(1, 2)
                 Y = Y + (s.sl(Z) + s.cm(Z)).transpose(1, 2).reshape(Ts, B, N, D)
             Y = s.bn(Y.reshape(-1, N, D).transpose(1, 2)).transpose(1, 2).reshape(Ts, B, N, D)

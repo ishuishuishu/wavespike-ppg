@@ -2,6 +2,26 @@
 
 This folder has everything needed to run our PPG versions of four published spiking-wavelet designs (P2, P3, P4, P5) and compare them with our own SNN. It is self-contained: copy just this folder to a server and follow this guide top to bottom.
 
+## ⚠️ Code update (23 Nov 2026): P3 and P5 fixed. If you already started, read this first
+
+`code/spiking_wavelets.py` changed. In P3 (`x_stf_swsa`) and P5 (`x_stf_fatm`), the Haar transform over tokens dropped 3 of its 128 coefficients, so the inverse transform did not rebuild the last 3 tokens exactly. Now all 128 are kept and the inverse is exact. **Nothing else changed:** P2, P4 and the baseline `x_stf_ssa` run exactly as before.
+
+What to do:
+
+1. **Update your copy** of this folder (`git pull`, or replace `code/spiking_wavelets.py` with the new one). Your other files, results and models stay.
+2. **P2, P4 and `x_stf_ssa`:** keep everything you have; no rerun.
+3. **P3 and P5:** any run made with the old code must be redone. Stop the job if `x_stf_swsa` or `x_stf_fatm` is running right now, then delete their old files (this command deletes only P3/P5 files):
+
+   ```bash
+   rm -f $WAVESPIKE_DATA_ROOT/results/bio_*/x_stf_swsa_* $WAVESPIKE_DATA_ROOT/results/bio_*/x_stf_fatm_*
+   rm -f $WAVESPIKE_DATA_ROOT/models/paper_designs/*x_stf_swsa* $WAVESPIKE_DATA_ROOT/models/paper_designs/*x_stf_fatm*
+   mv logs/x_stf_swsa_zenodo.log logs/x_stf_swsa_zenodo.old.log 2>/dev/null; mv logs/x_stf_swsa_seeing_red.log logs/x_stf_swsa_seeing_red.old.log 2>/dev/null
+   mv logs/x_stf_fatm_zenodo.log logs/x_stf_fatm_zenodo.old.log 2>/dev/null; mv logs/x_stf_fatm_seeing_red.log logs/x_stf_fatm_seeing_red.old.log 2>/dev/null
+   ```
+
+4. **Carry on with `bash run_all.sh`.** Finished runs are skipped, so it continues where it stopped and redoes P3/P5.
+5. In your note (deliverable 8), say whether you deleted any old P3/P5 runs.
+
 ## Your job, in short
 
 1. Prepare two open datasets (Seeing Red and Zenodo).
