@@ -1,0 +1,37 @@
+{
+ "note": "Descriptive test-set comparisons not used for any decision (STEP11_WAVESPIKE_RESULTS.md, Part B). Same paired() as step11_aggregate.py; 5-window EER, last checkpoint.",
+ "B1_minus_x_tau_amp_eer5": {
+  "n_pairs": 6,
+  "mean_diff": -0.0053728070175438625,
+  "ci95": [
+   -0.015562292068369933,
+   0.004816678033282208
+  ],
+  "wins_first_lower": 5,
+  "per_pair": {
+   "f0_ts0": -0.008333333333333331,
+   "f0_ts1": -0.003947368421052616,
+   "f1_ts0": -0.0061403508771930015,
+   "f1_ts1": -0.00416666666666668,
+   "f2_ts0": 0.010307017543859653,
+   "f2_ts1": -0.0199561403508772
+  }
+ },
+ "B1_minus_cwt_cnn_amp_eer5": {
+  "n_pairs": 6,
+  "mean_diff": 0.040972222222222215,
+  "ci95": [
+   0.02390126644537109,
+   0.05804317799907334
+  ],
+  "wins_first_lower": 0,
+  "per_pair": {
+   "f0_ts0": 0.034429824561403505,
+   "f0_ts1": 0.03245614035087718,
+   "f1_ts0": 0.03662280701754385,
+   "f1_ts1": 0.021710526315789472,
+   "f2_ts0": 0.0662280701754386,
+   "f2_ts1": 0.05438596491228069
+  }
+ }
+}
