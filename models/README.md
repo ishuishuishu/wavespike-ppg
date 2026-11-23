@@ -17,6 +17,8 @@
 | `bio_<dataset>__x_stf_swsa_bestval.pt` (2 files) | P3 SpikeWavformer SWSA (Yuan et al. 2025), with the exact Haar inverse | PyTorch |
 | `bio_<dataset>__x_stf_fatm_bestval.pt` (2 files) | P5 SWformer FATM (Fang et al. 2024), with the exact Haar inverse | PyTorch |
 
+| `bio_<dataset>__x_p6_<wavelet>_f0_ts0.pt` (10 files) | P6 fixed DWT (Aghabarar et al. 2023), wavelets haar, db2, db8, sym4, coif1, on both datasets; one run each (split 1, seed 0), retrained with saving. Test results match the original runs of that split: Seeing Red identical; Zenodo within 0.9 EER points (identical for sym4 and coif1) | PyTorch |
+
 `<dataset>` is `zenodo_bio_w10` or `seeing_red_luma_w10_trs0.5`. **P2, P3, P4, P5 and SSA have one run each so far** (fold 0, seed 0), so these files are that run; they will be replaced by the best of 6 by validation EER when the remaining runs finish.
 
 P1 models are designs rebuilt from the paper's text (Pedersen et al.), not the paper's own models. "Best" is chosen on validation data only; the reported P1 results are the mean of all 6 runs. Their 6-run test means (last epoch, 5 windows): learnable scales 16.4% (Zenodo) / 27.4% (Seeing Red) EER; paper encoder 17.0% / 23.8%. The P1 front ends are not exportable to the NumPy Pi format; they run with PyTorch.
