@@ -1,0 +1,10 @@
+# Versions used for the original lean SNN runs (CPU only). Newer patch versions should also work.
+# Install CPU PyTorch first:  pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu
+numpy==2.5.4
+scipy==1.18.1
+scikit-learn==1.9.1
+pandas==3.1.1
+h5py==3.16.0
+PyWavelets==1.10.0
+opencv-python-headless==5.0.0.93
+matplotlib==3.11.2

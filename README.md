@@ -15,6 +15,7 @@ A small spiking neural network (SNN) with a learnable wavelet front end for phot
 | `lean_snn/` | Handoff for the remaining lean SNN runs: step-by-step guide and run scripts |
 | `ablation/` | Wavelet-ablation handoff: results so far, the missing runs, code and run scripts |
 | `paper_designs/` | Self-contained folder to run our PPG versions of the P2–P5 spiking-wavelet designs: code, guide and run scripts |
+| `p6/` | Handoff to finish P6 (wavelet-family comparison): the missing runs, code, results so far and run scripts |
 | `archive/` | Other analysis scripts used during development; see `archive/README.md` |
 | `manuscript/` | Manuscript drafts (Word) |
 
