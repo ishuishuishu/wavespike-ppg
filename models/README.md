@@ -25,6 +25,11 @@
 | `bio_<dataset>__x_aug_lean_tau_amp_f0_ts0.pt` (2 files) | Lean SNN (4 wavelet bands, half the time steps, augmentation), split 1, seed 0. Test EER (5 windows): Zenodo 24.7%, Seeing Red 31.2% | PyTorch |
 | `wavespike_lean_zenodo.npz`, `wavespike_lean_seeing_red.npz` | The same lean models for the Raspberry Pi (Seeing Red needs `level=`). About 2× faster than the best SNN (2.9 vs 5.8 ms per window on our workstation). Check on 200 test windows: same identity as PyTorch on 200/200 (Zenodo) and 199/200 (Seeing Red; one spike flip at threshold) | NumPy only (`rpi_infer.py`) |
 
+| `bio_bidmc_bio_w10_rand__x_aug_tau_amp_f0_ts0.pt` + `wavespike_best_bidmc.npz` | Our best SNN on **BIDMC** (53 people, clean hospital PPG), **same-session** split (random 3-way split of each recording), split 1, seed 0. Test top-1 91.9 / 97.5 / 100% and EER 1.7 / 0.2 / 0.0% on 1 / 3 / 5 windows (original run of this split: 90.4 / 96.2 / 97.6%, EER 1.6 / 0.1 / 0.0%) | PyTorch / NumPy (Pi) |
+| `bio_mimic_bio_w10_rand__x_aug_tau_amp_f0_ts0.pt` + `wavespike_best_mimic.npz` | The same on **MIMIC PERform** (35 people), same session. Top-1 85.7 / 95.9 / 96.3%, EER 3.2 / 0.8 / 0.5% (original: 86.0 / 95.5 / 97.8%, EER 3.1 / 0.8 / 0.5%) | PyTorch / NumPy (Pi) |
+
+Pi versions of BIDMC and MIMIC: same identity as PyTorch on 64/64 synthetic test pulses, identical scores (their same-session test windows are not exported). Same network as the Zenodo model, so the same Pi latency and energy.
+
 `<dataset>` is `zenodo_bio_w10` or `seeing_red_luma_w10_trs0.5`. **P2, P3, P4, P5 and SSA have one run each so far** (fold 0, seed 0), so these files are that run; they will be replaced by the best of 6 by validation EER when the remaining runs finish.
 
 P1 models are designs rebuilt from the paper's text (Pedersen et al.), not the paper's own models. "Best" is chosen on validation data only; the reported P1 results are the mean of all 6 runs. Their 6-run test means (last epoch, 5 windows): learnable scales 16.4% (Zenodo) / 27.4% (Seeing Red) EER; paper encoder 17.0% / 23.8%. The P1 front ends are not exportable to the NumPy Pi format; they run with PyTorch.
